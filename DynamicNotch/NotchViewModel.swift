@@ -17,6 +17,8 @@ class NotchViewModel: NSObject, ObservableObject {
     deinit {
         destroy()
     }
+    
+    let laptopName = Host.current().localizedName ?? ""
 
     let animation: Animation = .interactiveSpring(
         duration: 0.5,
