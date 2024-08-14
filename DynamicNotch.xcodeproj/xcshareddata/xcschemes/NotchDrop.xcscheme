@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "5043817F2C3A86EA000ED325"
-               BuildableName = "NotchDrop.app"
-               BlueprintName = "NotchDrop"
-               ReferencedContainer = "container:NotchDrop.xcodeproj">
+               BuildableName = "DynamicNotch.app"
+               BlueprintName = "DynamicNotch"
+               ReferencedContainer = "container:DynamicNotch.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,9 +45,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "5043817F2C3A86EA000ED325"
-            BuildableName = "NotchDrop.app"
-            BlueprintName = "NotchDrop"
-            ReferencedContainer = "container:NotchDrop.xcodeproj">
+            BuildableName = "DynamicNotch.app"
+            BlueprintName = "DynamicNotch"
+            ReferencedContainer = "container:DynamicNotch.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -62,9 +62,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "5043817F2C3A86EA000ED325"
-            BuildableName = "NotchDrop.app"
-            BlueprintName = "NotchDrop"
-            ReferencedContainer = "container:NotchDrop.xcodeproj">
+            BuildableName = "DynamicNotch.app"
+            BlueprintName = "DynamicNotch"
+            ReferencedContainer = "container:DynamicNotch.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
