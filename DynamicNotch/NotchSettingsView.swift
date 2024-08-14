@@ -1,6 +1,6 @@
 //
 //  NotchSettingsView.swift
-//  NotchDrop
+//  DynamicNotch
 //
 //  Created by 曹丁杰 on 2024/7/29.
 //

@@ -1,13 +1,13 @@
 //
 //  main.swift
-//  NotchDrop
+//  DynamicNotch
 //
 //  Created by 秋星桥 on 2024/7/7.
 //
 
 import AppKit
 
-let productPage = URL(string: "https://github.com/Lakr233/NotchDrop")!
+let productPage = URL(string: "https://github.com/Lakr233/DynamicNotch")!
 let sponsorPage = URL(string: "https://github.com/sponsors/Lakr233")!
 
 let bundleIdentifier = Bundle.main.bundleIdentifier!
@@ -17,7 +17,7 @@ private let availableDirectories = FileManager
     .default
     .urls(for: .documentDirectory, in: .userDomainMask)
 let documentsDirectory = availableDirectories[0]
-    .appendingPathComponent("NotchDrop")
+    .appendingPathComponent("DynamicNotch")
 let temporaryDirectory = URL(fileURLWithPath: NSTemporaryDirectory())
     .appendingPathComponent(bundleIdentifier)
 try? FileManager.default.removeItem(at: temporaryDirectory)

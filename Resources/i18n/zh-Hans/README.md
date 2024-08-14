@@ -1,4 +1,4 @@
-# 挪翅丢 (NotchDrop)
+# 挪翅丢 (DynamicNotch)
 
 将你的 MacBook 刘海变成一个方便的文件传输区域。
 
@@ -20,7 +20,7 @@
 
 ## 🚀 使用方法
 
-请从 [Releases](https://github.com/Lakr233/NotchDrop/releases) 页面下载最新版本。
+请从 [Releases](https://github.com/Lakr233/DynamicNotch/releases) 页面下载最新版本。
 
 ## 🧑‍⚖️ 许可证
 

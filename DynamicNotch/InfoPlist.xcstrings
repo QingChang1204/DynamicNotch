@@ -8,18 +8,18 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "NotchDrop"
+            "value" : "DynamicNotch"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "简放岛"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "簡放島"
           }
         }
@@ -32,18 +32,18 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "NotchDrop"
+            "value" : "DynamicNotch"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "简放岛"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "簡放島"
           }
         }

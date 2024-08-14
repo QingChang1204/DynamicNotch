@@ -1,4 +1,4 @@
 #!/bin/zsh
 
-pkill NotchDrop
+pkill DynamicNotch
 

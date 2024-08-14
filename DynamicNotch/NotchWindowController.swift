@@ -1,6 +1,6 @@
 //
 //  NotchWindowController.swift
-//  NotchDrop
+//  DynamicNotch
 //
 //  Created by 秋星桥 on 2024/7/7.
 //

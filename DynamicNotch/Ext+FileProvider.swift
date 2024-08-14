@@ -1,6 +1,6 @@
 //
 //  Ext+FileProvider.swift
-//  NotchDrop
+//  DynamicNotch
 //
 //  Created by 秋星桥 on 2024/7/8.
 //
@@ -24,7 +24,7 @@ extension NSItemProvider {
         return temp
     }
 
-    func convertToFilePathThatIsWhatWeThinkItWillWorkWithNotchDrop() -> URL? {
+    func convertToFilePathThatIsWhatWeThinkItWillWorkWithDynamicNotch() -> URL? {
         var url: URL?
         let sem = DispatchSemaphore(value: 0)
         _ = loadObject(ofClass: URL.self) { item, _ in
@@ -48,7 +48,7 @@ extension NSItemProvider {
 extension [NSItemProvider] {
     func interfaceConvert() -> [URL]? {
         let urls = compactMap { provider -> URL? in
-            provider.convertToFilePathThatIsWhatWeThinkItWillWorkWithNotchDrop()
+            provider.convertToFilePathThatIsWhatWeThinkItWillWorkWithDynamicNotch()
         }
         guard urls.count == count else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
