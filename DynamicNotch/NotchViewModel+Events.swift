@@ -12,6 +12,8 @@ import SwiftUI
 
 extension NotchViewModel {
     func setupCancellables() {
+        let mediaInfo = MediaInfoManager.shared
+
         let events = EventMonitors.shared
         events.mouseDown
             .receive(on: DispatchQueue.main)

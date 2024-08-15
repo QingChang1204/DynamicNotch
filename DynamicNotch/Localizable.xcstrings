@@ -1106,6 +1106,7 @@
       }
     },
     "Notch Drop" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1449,6 +1450,7 @@
       }
     },
     "Version: %@ (Build: %@)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
