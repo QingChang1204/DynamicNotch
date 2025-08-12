@@ -15,7 +15,7 @@ struct NotchSettingsView: View {
     var body: some View {
         VStack(spacing: vm.spacing) {
             HStack {
-                Picker("Language: ", selection: $vm.selectedLanguage) {
+                Picker("语言: ", selection: $vm.selectedLanguage) {
                     ForEach(Language.allCases) { language in
                         Text(language.localized).tag(language)
                     }
@@ -25,11 +25,14 @@ struct NotchSettingsView: View {
 
                 Spacer()
                 LaunchAtLogin.Toggle {
-                    Text(NSLocalizedString("Launch at Login", comment: ""))
+                    Text("开机启动")
                 }
 
                 Spacer()
-                Toggle("Haptic Feedback", isOn: $vm.hapticFeedback)
+                Toggle("触觉反馈", isOn: $vm.hapticFeedback)
+                
+                Spacer()
+                Toggle("通知声音", isOn: $vm.notificationSound)
 
                 Spacer()
             }

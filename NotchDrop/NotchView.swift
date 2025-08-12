@@ -53,7 +53,8 @@ struct NotchView: View {
                         NotchContentView(vm: vm)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .padding(vm.spacing)
+                    .padding(.horizontal, 24)  // 增加水平内边距
+                    .padding(.vertical, vm.spacing)
                     .frame(maxWidth: vm.notchOpenedSize.width, maxHeight: vm.notchOpenedSize.height)
                     .zIndex(1)
                 }
@@ -142,12 +143,12 @@ struct NotchView: View {
             .contentShape(Rectangle())
             .frame(width: notchSize.width + vm.dropDetectorRange, height: notchSize.height + vm.dropDetectorRange)
             .onDrop(of: [.data], isTargeted: $dropTargeting) { _ in true }
-            .onChange(of: dropTargeting) { isTargeted in
-                if isTargeted, vm.status == .closed {
+            .onChange(of: dropTargeting) {
+                if dropTargeting, vm.status == .closed {
                     // Open the notch when a file is dragged over it
                     vm.notchOpen(.drag)
                     vm.hapticSender.send()
-                } else if !isTargeted {
+                } else if !dropTargeting {
                     // Close the notch when the dragged item leaves the area
                     let mouseLocation: NSPoint = NSEvent.mouseLocation
                     if !vm.notchOpenedRect.insetBy(dx: vm.inset, dy: vm.inset).contains(mouseLocation) {

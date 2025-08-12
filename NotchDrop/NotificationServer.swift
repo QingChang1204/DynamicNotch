@@ -137,7 +137,7 @@ class NotificationServer: ObservableObject {
             )
             
             // 使用更高优先级的队列确保快速响应
-            DispatchQueue.main.async { [weak self] in
+            DispatchQueue.main.async {
                 NotificationManager.shared.addNotification(notchNotification)
                 if NotchViewModel.shared?.status != .opened {
                     NotchViewModel.shared?.notchOpen(.drag)

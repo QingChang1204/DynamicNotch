@@ -7,12 +7,20 @@
 
 import SwiftUI
 
-// 动画常量
+// 动画常量 - 优化支持 ProMotion 120Hz
 enum AnimationConstants {
-    static let springSmooth = Animation.spring(response: 0.35, dampingFraction: 0.85)
-    static let notificationExpand = Animation.spring(response: 0.35, dampingFraction: 0.85)
-    static let notificationHide = Animation.easeInOut(duration: 0.25)
-    static let slideIn = Animation.spring(response: 0.5, dampingFraction: 0.8, blendDuration: 0)
+    static let springSmooth = Animation.interpolatingSpring(
+        mass: 0.6, stiffness: 400, damping: 22, initialVelocity: 0
+    )
+    static let notificationExpand = Animation.interpolatingSpring(
+        mass: 0.7, stiffness: 450, damping: 25, initialVelocity: 0
+    )
+    static let notificationHide = Animation.interpolatingSpring(
+        mass: 0.5, stiffness: 500, damping: 30, initialVelocity: 0
+    )
+    static let slideIn = Animation.interpolatingSpring(
+        mass: 0.8, stiffness: 350, damping: 20, initialVelocity: 0.5
+    )
     static let pulse = Animation.easeInOut(duration: 0.6).repeatForever(autoreverses: true)
     static let urgentPulse = Animation.easeInOut(duration: 0.3).repeatCount(3, autoreverses: true)
 }
@@ -62,6 +70,30 @@ struct NotificationView: View, Equatable {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.primary)
                     
+                    // 如果有改动统计，显示在标题旁边
+                    if let metadata = notification.metadata,
+                       metadata["diff_path"] != nil,
+                       notification.message.contains("+") && notification.message.contains("-") {
+                        let message = notification.message
+                        if let startIndex = message.firstIndex(of: "("),
+                           let endIndex = message.firstIndex(of: ")") {
+                            let stats = String(message[message.index(after: startIndex)..<endIndex])
+                            HStack(spacing: 2) {
+                                Text(stats.components(separatedBy: " ")[0])
+                                    .foregroundColor(.green)
+                                Text(stats.components(separatedBy: " ")[1])
+                                    .foregroundColor(.red)
+                            }
+                            .font(.system(size: 11, weight: .medium))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(Color.secondary.opacity(0.2))
+                            )
+                        }
+                    }
+                    
                     if manager.mergedCount > 0 {
                         Text("(\(manager.mergedCount + 1))")
                             .font(.system(size: 12, weight: .medium))
@@ -84,6 +116,21 @@ struct NotificationView: View, Equatable {
                     .animation(AnimationConstants.notificationExpand, value: isExpanded)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            
+            // 如果有 diff 信息，显示查看改动按钮
+            if notification.metadata?["diff_path"] != nil {
+                Button(action: {
+                    openDiffWindow()
+                    // 点击查看 diff 时，取消自动隐藏
+                    manager.cancelHideTimer()
+                }) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 14))
+                        .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
+                .help("查看文件改动")
+            }
             
             // 添加关闭按钮
             Button(action: {
@@ -117,6 +164,17 @@ struct NotificationView: View, Equatable {
                 }
             }
         }
+        .onHover { hovering in
+            if hovering {
+                // 鼠标悬停时取消自动隐藏
+                manager.cancelHideTimer()
+            } else {
+                // 鼠标离开时重新开始计时（如果通知还在显示）
+                if manager.showNotification {
+                    manager.restartHideTimer()
+                }
+            }
+        }
         .onTapGesture {
             // 点击展开详情（如果消息很长）
             if notification.message.count > 50 {
@@ -125,6 +183,40 @@ struct NotificationView: View, Equatable {
                 }
             }
         }
+    }
+    
+    private func openDiffWindow() {
+        guard let diffPath = notification.metadata?["diff_path"],
+              let filePath = notification.metadata?["file_path"] else { return }
+        
+        // 创建新窗口显示 DiffView
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        
+        let fileName = URL(fileURLWithPath: filePath).lastPathComponent
+        let isPreview = notification.metadata?["is_preview"] == "true"
+        window.title = isPreview ? "改动预览 - \(fileName)" : "文件改动 - \(fileName)"
+        window.center()
+        window.setFrameAutosaveName("DiffWindow")
+        
+        // 创建一个状态绑定用于关闭窗口
+        let isPresented = Binding<Bool>(
+            get: { window.isVisible },
+            set: { if !$0 { window.close() } }
+        )
+        
+        window.contentView = NSHostingView(
+            rootView: DiffView(diffPath: diffPath, filePath: filePath, isPresented: isPresented)
+        )
+        
+        window.makeKeyAndOrderFront(nil)
+        
+        // 打开窗口后收起刘海
+        NotchViewModel.shared?.notchClose()
     }
     
     // 背景渐变（紧急通知有特殊背景）
@@ -205,7 +297,7 @@ struct NotificationHistoryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Notification History")
+                Text("通知历史")
                     .font(.system(size: 16, weight: .semibold))
                 
                 Spacer()
@@ -213,7 +305,7 @@ struct NotificationHistoryView: View {
                 Button(action: {
                     manager.clearHistory()
                 }) {
-                    Text("Clear All")
+                    Text("清除全部")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
@@ -223,9 +315,9 @@ struct NotificationHistoryView: View {
             .padding(.top, 12)
             
             ScrollView {
-                VStack(spacing: 8) {
+                LazyVStack(spacing: 8) {  // 改用 LazyVStack 提升性能
                     if manager.notificationHistory.isEmpty {
-                        Text("No notifications yet")
+                    Text("暂无通知记录")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                             .frame(maxWidth: .infinity)
@@ -237,7 +329,12 @@ struct NotificationHistoryView: View {
                                 isSelected: selectedNotification?.id == notification.id
                             )
                             .onTapGesture {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                withAnimation(.interpolatingSpring(
+                                    mass: 0.7,
+                                    stiffness: 400,
+                                    damping: 25,
+                                    initialVelocity: 0
+                                )) {
                                     if selectedNotification?.id == notification.id {
                                         selectedNotification = nil
                                     } else {
@@ -258,58 +355,47 @@ struct NotificationHistoryView: View {
 
 struct NotificationCenterMainView: View {
     @ObservedObject var manager = NotificationManager.shared
+    @State private var selectedNotification: NotchNotification?
     
     var body: some View {
-        VStack(spacing: 12) {
-            if manager.notificationHistory.isEmpty {
-                // 空状态界面
-                VStack(spacing: 8) {
-                    Image(systemName: "bell.circle.fill")
-                        .font(.system(size: 40))
-                        .foregroundColor(.secondary.opacity(0.5))
-                    
-                    Text("通知中心")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                    
-                    Text("暂无通知")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                // 显示最近的通知摘要
-                HStack(spacing: 16) {
-                    Image(systemName: "bell.badge.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(.blue)
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        if let latest = manager.notificationHistory.first {
-                            Text(latest.title)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.primary)
-                            
-                            Text(latest.message)
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                                .lineLimit(2)
+        if manager.notificationHistory.isEmpty {
+            // 空状态界面
+            VStack(spacing: 8) {
+                Spacer()
+                Image(systemName: "bell.slash")
+                    .font(.system(size: 32))
+                    .foregroundColor(.secondary.opacity(0.3))
+                
+                Text("暂无通知")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            // 直接显示可滑动的历史记录
+            ScrollView {
+                VStack(spacing: 6) {
+                    ForEach(manager.notificationHistory) { notification in
+                        NotificationHistoryItem(
+                            notification: notification,
+                            isSelected: selectedNotification?.id == notification.id
+                        )
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                if selectedNotification?.id == notification.id {
+                                    selectedNotification = nil
+                                } else {
+                                    selectedNotification = notification
+                                }
+                            }
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("\(manager.notificationHistory.count)")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(.primary)
-                        
-                        Text("通知")
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
-                    }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
             }
+            .frame(maxHeight: 250)
         }
     }
 }
@@ -326,9 +412,29 @@ struct NotificationHistoryItem: View {
                     .foregroundColor(notification.color)
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(notification.title)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.primary)
+                    HStack(spacing: 4) {
+                        Text(notification.title)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.primary)
+                        
+                        // 如果消息中包含改动统计，显示标签
+                        if notification.message.contains("+") && notification.message.contains("-") {
+                            let message = notification.message
+                            let components = message.components(separatedBy: "(")
+                            if components.count > 1,
+                               let stats = components.last?.dropLast() { // 移除最后的 )
+                                Text(stats)
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.blue.opacity(0.8))
+                                    )
+                            }
+                        }
+                    }
                     
                     Text(timeAgoString(from: notification.timestamp))
                         .font(.system(size: 10))
@@ -336,6 +442,19 @@ struct NotificationHistoryItem: View {
                 }
                 
                 Spacer()
+                
+                // 如果有 diff 信息，显示图标
+                if let diffPath = notification.metadata?["diff_path"],
+                   let filePath = notification.metadata?["file_path"] {
+                    Button(action: {
+                        openDiffWindow(diffPath: diffPath, filePath: filePath)
+                    }) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(.system(size: 12))
+                            .foregroundColor(.blue.opacity(0.7))
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             
             if isSelected {
@@ -357,20 +476,51 @@ struct NotificationHistoryItem: View {
         )
     }
     
+    private func openDiffWindow(diffPath: String, filePath: String) {
+        // 创建新窗口显示 DiffView
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        
+        let fileName = URL(fileURLWithPath: filePath).lastPathComponent
+        // 历史记录中的 diff 通常是已完成的，不是预览
+        window.title = "文件改动 - \(fileName)"
+        window.center()
+        window.setFrameAutosaveName("DiffWindow")
+        
+        // 创建一个状态绑定用于关闭窗口
+        let isPresented = Binding<Bool>(
+            get: { window.isVisible },
+            set: { if !$0 { window.close() } }
+        )
+        
+        window.contentView = NSHostingView(
+            rootView: DiffView(diffPath: diffPath, filePath: filePath, isPresented: isPresented)
+        )
+        
+        window.makeKeyAndOrderFront(nil)
+        
+        // 打开窗口后收起刘海
+        NotchViewModel.shared?.notchClose()
+    }
+    
     private func timeAgoString(from date: Date) -> String {
         let interval = Date().timeIntervalSince(date)
         
         if interval < 60 {
-            return "Just now"
+            return "刚刚"
         } else if interval < 3600 {
             let minutes = Int(interval / 60)
-            return "\(minutes) min\(minutes == 1 ? "" : "s") ago"
+            return "\(minutes) 分钟前"
         } else if interval < 86400 {
             let hours = Int(interval / 3600)
-            return "\(hours) hour\(hours == 1 ? "" : "s") ago"
+            return "\(hours) 小时前"
         } else {
             let days = Int(interval / 86400)
-            return "\(days) day\(days == 1 ? "" : "s") ago"
+            return "\(days) 天前"
         }
     }
 }

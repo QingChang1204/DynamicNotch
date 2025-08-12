@@ -133,7 +133,7 @@ class NotificationManager: ObservableObject {
     @Published var pendingNotifications: [NotchNotification] = []  // 通知队列
     @Published var mergedCount: Int = 0  // 合并的通知数量
     
-    private let maxHistoryCount = 100
+    private let maxHistoryCount = 50  // 减少历史记录以提升性能
     private let maxQueueSize = 10  // 最大队列长度
     private var displayDuration: TimeInterval = 1.0  // 基础显示时间
     private weak var hideTimer: Timer?  // 使用 weak 避免循环引用
@@ -251,24 +251,52 @@ class NotificationManager: ObservableObject {
             NotchViewModel.shared?.notchOpen(.drag)
         }
         
+        // 播放通知声音
+        if NotchViewModel.shared?.notificationSound == true {
+            playNotificationSound(for: notification)
+        }
+        
         // 根据优先级和内容长度计算显示时间
         let calculatedDuration = duration ?? calculateDisplayDuration(for: notification)
         startHideTimer(duration: calculatedDuration)
     }
     
+    private func playNotificationSound(for notification: NotchNotification) {
+        // 根据通知类型播放不同的系统声音
+        let soundName: NSSound.Name? = switch notification.type {
+        case .success:
+            NSSound.Name("Glass")
+        case .error:
+            NSSound.Name("Basso")
+        case .warning:
+            NSSound.Name("Blow")
+        case .info, .hook, .toolUse, .progress:
+            NSSound.Name("Pop")
+        }
+        
+        if let soundName = soundName {
+            NSSound(named: soundName)?.play()
+        }
+    }
+    
     private func calculateDisplayDuration(for notification: NotchNotification) -> TimeInterval {
         var duration = displayDuration
         
-        // 根据优先级调整
-        switch notification.priority {
-        case .urgent:
-            duration = 2.0
-        case .high:
-            duration = 1.5
-        case .normal:
-            duration = 1.0
-        case .low:
-            duration = 0.8
+        // 如果有 diff 信息，延长显示时间
+        if notification.metadata?["diff_path"] != nil {
+            duration = 2.0  // diff 通知显示更久
+        } else {
+            // 根据优先级调整
+            switch notification.priority {
+            case .urgent:
+                duration = 2.0
+            case .high:
+                duration = 1.5
+            case .normal:
+                duration = 1.0
+            case .low:
+                duration = 0.8
+            }
         }
         
         // 根据消息长度调整（每50字符增加0.5秒）
@@ -294,6 +322,17 @@ class NotificationManager: ObservableObject {
         hideTimer = nil
         closeTimer?.invalidate()
         closeTimer = nil
+    }
+    
+    func cancelHideTimer() {
+        print("[NotificationManager] 取消自动隐藏")
+        hideTimer?.invalidate()
+        hideTimer = nil
+    }
+    
+    func restartHideTimer() {
+        print("[NotificationManager] 重新开始计时")
+        startHideTimer(duration: 1.0)
     }
     
     private func startHideTimer(duration: TimeInterval = 1.0) {

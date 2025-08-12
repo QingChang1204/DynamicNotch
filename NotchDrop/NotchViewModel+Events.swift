@@ -20,12 +20,29 @@ extension NotchViewModel {
                 let mouseLocation: NSPoint = NSEvent.mouseLocation
                 switch status {
                 case .opened:
+                    // 如果正在显示通知，延迟关闭以确保用户能看到内容
+                    let hasActiveNotification = NotificationManager.shared.showNotification
+                    let minimumDisplayTime: TimeInterval = hasActiveNotification ? 0.7 : 0
+                    
                     // touch outside, close
                     if !notchOpenedRect.contains(mouseLocation) {
-                        notchClose()
+                        if hasActiveNotification {
+                            // 给通知一个最小显示时间
+                            DispatchQueue.main.asyncAfter(deadline: .now() + minimumDisplayTime) { [weak self] in
+                                self?.notchClose()
+                            }
+                        } else {
+                            notchClose()
+                        }
                         // click where user open the panel
                     } else if deviceNotchRect.insetBy(dx: inset, dy: inset).contains(mouseLocation) {
-                        notchClose()
+                        if hasActiveNotification {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + minimumDisplayTime) { [weak self] in
+                                self?.notchClose()
+                            }
+                        } else {
+                            notchClose()
+                        }
                         // for the same height as device notch, open the url of project
                     } else if headlineOpenedRect.contains(mouseLocation) {
                         // for clicking headline which mouse event may handled by another app

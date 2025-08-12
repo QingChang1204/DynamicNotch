@@ -19,10 +19,12 @@ class NotchViewModel: NSObject, ObservableObject {
         destroy()
     }
 
-    let animation: Animation = .interactiveSpring(
-        duration: 0.5,
-        extraBounce: 0.25,
-        blendDuration: 0.125
+    // 优化的动画配置，支持 ProMotion 120Hz
+    let animation: Animation = .interpolatingSpring(
+        mass: 0.7,           // 降低质量，更轻快
+        stiffness: 450,      // 增加刚度，更快响应
+        damping: 28,         // 适度阻尼，减少震荡
+        initialVelocity: 0
     )
     let notchOpenedSize: CGSize = .init(width: 600, height: 160)
     let dropDetectorRange: CGFloat = 32
@@ -81,6 +83,9 @@ class NotchViewModel: NSObject, ObservableObject {
 
     @PublishedPersist(key: "hapticFeedback", defaultValue: true)
     var hapticFeedback: Bool
+    
+    @PublishedPersist(key: "notificationSound", defaultValue: true)
+    var notificationSound: Bool
 
     let hapticSender = PassthroughSubject<Void, Never>()
 

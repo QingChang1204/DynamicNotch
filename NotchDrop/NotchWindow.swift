@@ -35,6 +35,7 @@ class NotchWindow: NSWindow {
         ]
         level = .statusBar + 8 // kills ibar lol
         hasShadow = false
+        animationBehavior = .none  // 禁用系统动画，使用自定义动画
     }
 
     override var canBecomeKey: Bool {
