@@ -10,15 +10,15 @@ import SwiftUI
 
 struct NotchMenuView: View {
     @StateObject var vm: NotchViewModel
-    @StateObject var tvm = TrayDrop.shared
+    @ObservedObject var notificationManager = NotificationManager.shared
 
     var body: some View {
         HStack(spacing: vm.spacing) {
-            close
-            github
-            donate
+            history
+            clearNotifications
             settings
-            clear
+            github
+            close
         }
     }
 
@@ -35,18 +35,6 @@ struct NotchMenuView: View {
         .clipShape(RoundedRectangle(cornerRadius: vm.cornerRadius))
     }
 
-    var donate: some View {
-        ColorButton(
-            color: ColorfulPreset.colorful.colors,
-            image: Image(systemName: "heart.fill"),
-            title: "Love Drop"
-        )
-        .onTapGesture {
-            NSWorkspace.shared.open(sponsorPage)
-            vm.notchClose()
-        }
-        .clipShape(RoundedRectangle(cornerRadius: vm.cornerRadius))
-    }
 
     var close: some View {
         ColorButton(
@@ -63,14 +51,14 @@ struct NotchMenuView: View {
         .clipShape(RoundedRectangle(cornerRadius: vm.cornerRadius))
     }
 
-    var clear: some View {
+    var clearNotifications: some View {
         ColorButton(
-            color: [.red],
-            image: Image(systemName: "trash"),
+            color: [.orange],
+            image: Image(systemName: "bell.slash"),
             title: "Clear"
         )
         .onTapGesture {
-            tvm.removeAll()
+            notificationManager.clearHistory()
             vm.notchClose()
         }
         .clipShape(RoundedRectangle(cornerRadius: vm.cornerRadius))
@@ -84,6 +72,18 @@ struct NotchMenuView: View {
         )
         .onTapGesture {
             vm.showSettings()
+        }
+        .clipShape(RoundedRectangle(cornerRadius: vm.cornerRadius))
+    }
+    
+    var history: some View {
+        ColorButton(
+            color: ColorfulPreset.colorful.colors,
+            image: Image(systemName: "bell.badge"),
+            title: LocalizedStringKey("History")
+        )
+        .onTapGesture {
+            vm.contentType = .history
         }
         .clipShape(RoundedRectangle(cornerRadius: vm.cornerRadius))
     }

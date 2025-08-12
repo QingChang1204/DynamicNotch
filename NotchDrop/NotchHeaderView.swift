@@ -16,7 +16,7 @@ struct NotchHeaderView: View {
             Text(
                 vm.contentType == .settings
                     ? "Version: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown") (Build: \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"))"
-                    : "Notch Drop"
+                    : "通知中心"
             )
             .contentTransition(.numericText())
             Spacer()

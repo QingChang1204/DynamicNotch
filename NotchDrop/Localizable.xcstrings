@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "(%lld)" : {
+
+    },
     "& Press Option to delete" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -35,6 +38,15 @@
           }
         }
       }
+    },
+    "%lld" : {
+
+    },
+    "%lld / 100" : {
+
+    },
+    "• %lld pending" : {
+
     },
     "1 Day" : {
       "extractionState" : "manual",
@@ -246,6 +258,7 @@
       }
     },
     "a day" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -280,6 +293,7 @@
       }
     },
     "a week" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -314,6 +328,7 @@
       }
     },
     "AirDrop" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -348,6 +363,7 @@
       }
     },
     "AirDrop service not available" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -382,6 +398,7 @@
       }
     },
     "an hour" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -449,6 +466,9 @@
         }
       }
     },
+    "Clear All" : {
+
+    },
     "Custom" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -485,6 +505,7 @@
       }
     },
     "Days" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -657,6 +678,7 @@
       }
     },
     "File Storage Time: " : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -726,6 +748,7 @@
       }
     },
     "forever" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -828,7 +851,11 @@
         }
       }
     },
+    "Haptic Feedback" : {
+
+    },
     "Haptic Feedback " : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -861,6 +888,9 @@
           }
         }
       }
+    },
+    "History" : {
+
     },
     "Hours" : {
       "extractionState" : "manual",
@@ -1002,6 +1032,7 @@
       }
     },
     "Love Drop" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1105,7 +1136,11 @@
         }
       }
     },
+    "No notifications yet" : {
+
+    },
     "Notch Drop" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1138,6 +1173,9 @@
           }
         }
       }
+    },
+    "Notification History" : {
+
     },
     "OK" : {
       "localizations" : {
@@ -1312,6 +1350,7 @@
       }
     },
     "three days" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1346,6 +1385,7 @@
       }
     },
     "Time Unit" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1415,6 +1455,7 @@
       }
     },
     "two days" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1551,6 +1592,27 @@
           }
         }
       }
+    },
+    "暂无通知" : {
+
+    },
+    "服务器状态:" : {
+
+    },
+    "未运行" : {
+
+    },
+    "运行中 (端口 9876)" : {
+
+    },
+    "通知" : {
+
+    },
+    "通知中心" : {
+
+    },
+    "通知历史记录:" : {
+
     }
   },
   "version" : "1.0"

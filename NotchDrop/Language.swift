@@ -89,7 +89,7 @@ private extension Bundle {
     }
 }
 
-private class PrivateBundle: Bundle {
+private class PrivateBundle: Bundle, @unchecked Sendable {
     override func localizedString(forKey key: String, value: String?, table tableName: String?) -> String {
         guard let languages = UserDefaults.standard.array(forKey: "AppleLanguages") as? [String],
               let languageCode = languages.first,

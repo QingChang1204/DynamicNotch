@@ -7,7 +7,7 @@
 
 import AppKit
 
-let productPage = URL(string: "https://github.com/Lakr233/NotchDrop")!
+let productPage = URL(string: "https://github.com/QingChang1204/DynamicNotch")!
 let sponsorPage = URL(string: "https://github.com/sponsors/Lakr233")!
 
 let bundleIdentifier = Bundle.main.bundleIdentifier!
@@ -17,7 +17,7 @@ private let availableDirectories = FileManager
     .default
     .urls(for: .documentDirectory, in: .userDomainMask)
 let documentsDirectory = availableDirectories[0]
-    .appendingPathComponent("NotchDrop")
+    .appendingPathComponent("NotchNotifier")
 let temporaryDirectory = URL(fileURLWithPath: NSTemporaryDirectory())
     .appendingPathComponent(bundleIdentifier)
 try? FileManager.default.removeItem(at: temporaryDirectory)
@@ -52,8 +52,12 @@ do {
     exit(1)
 }
 
-_ = TrayDrop.shared
-TrayDrop.shared.cleanExpiredFiles()
+// 初始化通知系统
+_ = NotificationManager.shared
+
+// 启动通知服务器
+NotificationServer.shared.start()
+print("[main] Started notification server on port 9876")
 
 private let delegate = AppDelegate()
 NSApplication.shared.delegate = delegate

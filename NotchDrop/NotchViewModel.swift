@@ -11,6 +11,7 @@ class NotchViewModel: NSObject, ObservableObject {
     init(inset: CGFloat = -4) {
         self.inset = inset
         super.init()
+        NotchViewModel.shared = self
         setupCancellables()
     }
 
@@ -43,6 +44,7 @@ class NotchViewModel: NSObject, ObservableObject {
         case normal
         case menu
         case settings
+        case history
     }
 
     var notchOpenedRect: CGRect {

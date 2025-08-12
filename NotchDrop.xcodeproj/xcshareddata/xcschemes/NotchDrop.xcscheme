@@ -16,8 +16,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "5043817F2C3A86EA000ED325"
-               BuildableName = "NotchDrop.app"
-               BlueprintName = "NotchDrop"
+               BuildableName = "NotchNotifier.app"
+               BlueprintName = "NotchNotifier"
                ReferencedContainer = "container:NotchDrop.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -45,8 +45,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "5043817F2C3A86EA000ED325"
-            BuildableName = "NotchDrop.app"
-            BlueprintName = "NotchDrop"
+            BuildableName = "NotchNotifier.app"
+            BlueprintName = "NotchNotifier"
             ReferencedContainer = "container:NotchDrop.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -62,8 +62,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "5043817F2C3A86EA000ED325"
-            BuildableName = "NotchDrop.app"
-            BlueprintName = "NotchDrop"
+            BuildableName = "NotchNotifier.app"
+            BlueprintName = "NotchNotifier"
             ReferencedContainer = "container:NotchDrop.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -73,6 +73,7 @@
    </AnalyzeAction>
    <ArchiveAction
       buildConfiguration = "Release"
+      customArchiveName = "NotchNotifier"
       revealArchiveInOrganizer = "YES">
    </ArchiveAction>
 </Scheme>

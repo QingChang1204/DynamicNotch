@@ -10,7 +10,7 @@ import SwiftUI
 
 struct NotchSettingsView: View {
     @StateObject var vm: NotchViewModel
-    @StateObject var tvm: TrayDrop = .shared
+    @ObservedObject var notificationManager = NotificationManager.shared
 
     var body: some View {
         VStack(spacing: vm.spacing) {
@@ -29,44 +29,39 @@ struct NotchSettingsView: View {
                 }
 
                 Spacer()
-                Toggle("Haptic Feedback ", isOn: $vm.hapticFeedback)
+                Toggle("Haptic Feedback", isOn: $vm.hapticFeedback)
 
                 Spacer()
             }
 
             HStack {
-                Picker("File Storage Time: ", selection: $tvm.selectedFileStorageTime) {
-                    ForEach(TrayDrop.FileStorageTime.allCases) { time in
-                        Text(time.localized).tag(time)
-                    }
-                }
-                .pickerStyle(MenuPickerStyle())
-                .frame(width: 200)
-                if tvm.selectedFileStorageTime == .custom {
-                    TextField("Days", value: $tvm.customStorageTime, formatter: NumberFormatter())
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .frame(width: 50)
-                        .padding(.leading, 10)
-                    Picker("Time Unit", selection: $tvm.customStorageTimeUnit) {
-                        ForEach(TrayDrop.CustomstorageTimeUnit.allCases) { unit in
-                            Text(unit.localized).tag(unit)
-                        }
-                    }
-                    .pickerStyle(MenuPickerStyle())
-                    .frame(width: 200)
-                }
+                Text("通知历史记录:")
+                    .foregroundColor(.secondary)
+                
+                Text("\(notificationManager.notificationHistory.count) / 100")
+                    .font(.system(size: 14, weight: .semibold))
+                
+                Spacer()
+                
+                Text("服务器状态:")
+                    .foregroundColor(.secondary)
+                
+                Text(NotificationServer.shared.isRunning ? "运行中 (端口 9876)" : "未运行")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(NotificationServer.shared.isRunning ? .green : .red)
+                
                 Spacer()
             }
         }
         .padding()
-        .transition(.scale(scale: 0.8).combined(with: .opacity))
+        .transition(AnyTransition.scale(scale: 0.8).combined(with: .opacity))
     }
 }
 
 #Preview {
-    NotchSettingsView(vm: .init())
+    NotchSettingsView(vm: NotchViewModel())
         .padding()
         .frame(width: 600, height: 150, alignment: .center)
-        .background(.black)
+        .background(Color.black)
         .preferredColorScheme(.dark)
 }
