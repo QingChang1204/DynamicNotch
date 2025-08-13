@@ -1,17 +1,17 @@
 #!/bin/bash
 
-# NotchDrop DMG 打包脚本
+# NotchNoti DMG 打包脚本
 # 用于创建可分发的 DMG 安装包
 
 set -e
 
-echo "🚀 开始打包 NotchDrop..."
+echo "🚀 开始打包 NotchNoti..."
 
 # 配置
-APP_NAME="NotchNotifier"
-DMG_NAME="NotchDrop"
+APP_NAME="NotchNoti"
+DMG_NAME="NotchNoti"
 VERSION="1.0.0"
-BUNDLE_ID="com.qingchang.notchdrop"
+BUNDLE_ID="com.qingchang.notchnoti"
 
 # 路径
 PROJECT_DIR="$(pwd)"
@@ -29,7 +29,7 @@ mkdir -p "${DMG_CONTENTS}"
 
 # 构建 Release 版本
 echo "🔨 构建 Release 版本..."
-xcodebuild -scheme NotchDrop \
+xcodebuild -scheme NotchNoti \
     -configuration Release \
     -derivedDataPath "${BUILD_DIR}/DerivedData" \
     PRODUCT_BUNDLE_IDENTIFIER="${BUNDLE_ID}" \
@@ -57,7 +57,7 @@ ln -s /Applications "${DMG_CONTENTS}/Applications"
 
 # 创建 README 文件
 cat > "${DMG_CONTENTS}/README.txt" << EOF
-NotchDrop - Dynamic Notch Notification System
+NotchNoti - Dynamic Notch Notification System
 =============================================
 
 安装说明:
