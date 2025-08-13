@@ -41,7 +41,7 @@ struct NotchSettingsView: View {
                 Text("通知历史记录:")
                     .foregroundColor(.secondary)
                 
-                Text("\(notificationManager.notificationHistory.count) / 100")
+                Text("\(notificationManager.notificationHistory.count) / 50")
                     .font(.system(size: 14, weight: .semibold))
                 
                 Spacer()
