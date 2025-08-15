@@ -94,7 +94,7 @@ iOSInjectionProject/
 
 # Serena MCP 配置
 # 缓存文件（自动生成，不需要提交）
-.serena/.cache/
+.serena/cache/
 # 保留项目配置
 !.serena/project.yml
 # 临时和私有记忆文件
