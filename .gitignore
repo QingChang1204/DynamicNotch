@@ -91,3 +91,22 @@ iOSInjectionProject/
 .DS_Store
 .idea/
 /.claude/hooks/rust-hook/
+
+# Serena MCP 配置
+# 缓存文件（自动生成，不需要提交）
+.serena/.cached/
+# 保留项目配置
+!.serena/project.yml
+# 临时和私有记忆文件
+.serena/memories/*_temp.md
+.serena/memories/*_private.md
+.serena/memories/*_local.md
+.serena/memories/*_task.md
+.serena/memories/*_session.md
+# 但保留通用的项目记忆（已经提交的）
+!.serena/memories/project_*.md
+!.serena/memories/tech_*.md
+!.serena/memories/architecture_*.md
+!.serena/memories/suggested_*.md
+!.serena/memories/task_completion_*.md
+!.serena/memories/code_style_*.md
