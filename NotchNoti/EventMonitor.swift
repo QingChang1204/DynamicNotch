@@ -1,4 +1,4 @@
-import AppKit
+import Cocoa
 
 public class EventMonitor {
     private var globalMonitor: AnyObject?

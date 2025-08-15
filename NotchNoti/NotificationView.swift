@@ -240,6 +240,11 @@ struct NotificationView: View, Equatable {
         guard let diffPath = notification.metadata?["diff_path"],
               let filePath = notification.metadata?["file_path"] else { return }
         
+        let isPreview = notification.metadata?["is_preview"] == "true"
+        openDiffWindow(diffPath: diffPath, filePath: filePath, isPreview: isPreview)
+    }
+    
+    private func openDiffWindow(diffPath: String, filePath: String, isPreview: Bool) {
         // 创建新窗口显示 DiffView
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
@@ -249,7 +254,6 @@ struct NotificationView: View, Equatable {
         )
         
         let fileName = URL(fileURLWithPath: filePath).lastPathComponent
-        let isPreview = notification.metadata?["is_preview"] == "true"
         window.title = isPreview ? "改动预览 - \(fileName)" : "文件改动 - \(fileName)"
         window.center()
         window.setFrameAutosaveName("DiffWindow")
@@ -527,7 +531,7 @@ struct NotificationHistoryItem: View {
         )
     }
     
-    private func openDiffWindow(diffPath: String, filePath: String) {
+    private func openDiffWindow(diffPath: String, filePath: String, isPreview: Bool = false) {
         // 创建新窗口显示 DiffView
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
@@ -537,8 +541,7 @@ struct NotificationHistoryItem: View {
         )
         
         let fileName = URL(fileURLWithPath: filePath).lastPathComponent
-        // 历史记录中的 diff 通常是已完成的，不是预览
-        window.title = "文件改动 - \(fileName)"
+        window.title = isPreview ? "改动预览 - \(fileName)" : "文件改动 - \(fileName)"
         window.center()
         window.setFrameAutosaveName("DiffWindow")
         

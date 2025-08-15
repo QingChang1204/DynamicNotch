@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import AppKit
+import Cocoa
 
 struct DiffView: View {
     let diffPath: String?

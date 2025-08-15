@@ -25,15 +25,9 @@
 		504381AC2C3A95BD000ED325 /* EventMonitors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504381AB2C3A95BD000ED325 /* EventMonitors.swift */; };
 		504381AF2C3ADFF2000ED325 /* NotchContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504381AE2C3ADFF2000ED325 /* NotchContentView.swift */; };
 		504381B12C3AE0B6000ED325 /* NotchHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504381B02C3AE0B6000ED325 /* NotchHeaderView.swift */; };
-		5044EE9C2C3B082300071C5C /* Pow in Frameworks */ = {isa = PBXBuildFile; productRef = 5044EE9B2C3B082300071C5C /* Pow */; };
 		5044EE9E2C3B0F3D00071C5C /* Ext+FileProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5044EE9D2C3B0F3D00071C5C /* Ext+FileProvider.swift */; };
 		5044EEA02C3B116000071C5C /* PublishedPersist.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5044EE9F2C3B116000071C5C /* PublishedPersist.swift */; };
 		5044EEA42C3B140F00071C5C /* Ext+URL.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5044EEA32C3B140F00071C5C /* Ext+URL.swift */; };
-		5044EEA72C3B174100071C5C /* BitCollections in Frameworks */ = {isa = PBXBuildFile; productRef = 5044EEA62C3B174100071C5C /* BitCollections */; };
-		5044EEA92C3B174100071C5C /* Collections in Frameworks */ = {isa = PBXBuildFile; productRef = 5044EEA82C3B174100071C5C /* Collections */; };
-		5044EEAB2C3B174100071C5C /* DequeModule in Frameworks */ = {isa = PBXBuildFile; productRef = 5044EEAA2C3B174100071C5C /* DequeModule */; };
-		5044EEAD2C3B174100071C5C /* HashTreeCollections in Frameworks */ = {isa = PBXBuildFile; productRef = 5044EEAC2C3B174100071C5C /* HashTreeCollections */; };
-		5044EEAF2C3B174100071C5C /* HeapModule in Frameworks */ = {isa = PBXBuildFile; productRef = 5044EEAE2C3B174100071C5C /* HeapModule */; };
 		504A5D802C59EC2D004E8297 /* LaunchAtLogin in Frameworks */ = {isa = PBXBuildFile; productRef = 504A5D7F2C59EC2D004E8297 /* LaunchAtLogin */; };
 		508C4DF22C631EF700642ADC /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 508C4DF12C631EF700642ADC /* InfoPlist.xcstrings */; };
 		50CB767E2C3BC8880070D5E6 /* NotchViewModel+Events.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50CB767D2C3BC8880070D5E6 /* NotchViewModel+Events.swift */; };
@@ -107,14 +101,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5044EEAD2C3B174100071C5C /* HashTreeCollections in Frameworks */,
 				5043819E2C3A8ACA000ED325 /* ColorfulX in Frameworks */,
-				5044EE9C2C3B082300071C5C /* Pow in Frameworks */,
-				5044EEAF2C3B174100071C5C /* HeapModule in Frameworks */,
-				5044EEAB2C3B174100071C5C /* DequeModule in Frameworks */,
-				5044EEA92C3B174100071C5C /* Collections in Frameworks */,
 				504A5D802C59EC2D004E8297 /* LaunchAtLogin in Frameworks */,
-				5044EEA72C3B174100071C5C /* BitCollections in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -206,12 +194,6 @@
 			name = NotchNoti;
 			packageProductDependencies = (
 				5043819D2C3A8ACA000ED325 /* ColorfulX */,
-				5044EE9B2C3B082300071C5C /* Pow */,
-				5044EEA62C3B174100071C5C /* BitCollections */,
-				5044EEA82C3B174100071C5C /* Collections */,
-				5044EEAA2C3B174100071C5C /* DequeModule */,
-				5044EEAC2C3B174100071C5C /* HashTreeCollections */,
-				5044EEAE2C3B174100071C5C /* HeapModule */,
 				504A5D7F2C59EC2D004E8297 /* LaunchAtLogin */,
 			);
 			productName = NotchNoti;
@@ -247,8 +229,6 @@
 			mainGroup = 504381772C3A86EA000ED325;
 			packageReferences = (
 				5043819C2C3A8ACA000ED325 /* XCRemoteSwiftPackageReference "ColorfulX" */,
-				5044EE9A2C3B082300071C5C /* XCRemoteSwiftPackageReference "Pow" */,
-				5044EEA52C3B174100071C5C /* XCRemoteSwiftPackageReference "swift-collections" */,
 				504A5D7E2C59EC2D004E8297 /* XCRemoteSwiftPackageReference "LaunchAtLogin-Modern" */,
 			);
 			productRefGroup = 504381812C3A86EA000ED325 /* Products */;
@@ -534,22 +514,6 @@
 				minimumVersion = 5.1.0;
 			};
 		};
-		5044EE9A2C3B082300071C5C /* XCRemoteSwiftPackageReference "Pow" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/EmergeTools/Pow";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.4;
-			};
-		};
-		5044EEA52C3B174100071C5C /* XCRemoteSwiftPackageReference "swift-collections" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/apple/swift-collections.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.1.1;
-			};
-		};
 		504A5D7E2C59EC2D004E8297 /* XCRemoteSwiftPackageReference "LaunchAtLogin-Modern" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sindresorhus/LaunchAtLogin-Modern";
@@ -565,36 +529,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 5043819C2C3A8ACA000ED325 /* XCRemoteSwiftPackageReference "ColorfulX" */;
 			productName = ColorfulX;
-		};
-		5044EE9B2C3B082300071C5C /* Pow */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 5044EE9A2C3B082300071C5C /* XCRemoteSwiftPackageReference "Pow" */;
-			productName = Pow;
-		};
-		5044EEA62C3B174100071C5C /* BitCollections */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 5044EEA52C3B174100071C5C /* XCRemoteSwiftPackageReference "swift-collections" */;
-			productName = BitCollections;
-		};
-		5044EEA82C3B174100071C5C /* Collections */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 5044EEA52C3B174100071C5C /* XCRemoteSwiftPackageReference "swift-collections" */;
-			productName = Collections;
-		};
-		5044EEAA2C3B174100071C5C /* DequeModule */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 5044EEA52C3B174100071C5C /* XCRemoteSwiftPackageReference "swift-collections" */;
-			productName = DequeModule;
-		};
-		5044EEAC2C3B174100071C5C /* HashTreeCollections */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 5044EEA52C3B174100071C5C /* XCRemoteSwiftPackageReference "swift-collections" */;
-			productName = HashTreeCollections;
-		};
-		5044EEAE2C3B174100071C5C /* HeapModule */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 5044EEA52C3B174100071C5C /* XCRemoteSwiftPackageReference "swift-collections" */;
-			productName = HeapModule;
 		};
 		504A5D7F2C59EC2D004E8297 /* LaunchAtLogin */ = {
 			isa = XCSwiftPackageProductDependency;

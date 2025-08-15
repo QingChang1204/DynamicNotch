@@ -5,8 +5,7 @@
 //  自动配置Claude Code hooks
 //
 
-import Foundation
-import AppKit
+import Cocoa
 
 class ClaudeCodeSetup {
     static let shared = ClaudeCodeSetup()
