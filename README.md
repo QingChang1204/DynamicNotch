@@ -12,16 +12,16 @@
 
 ## ✨ 特性
 
-**现在支持Rust Hook系统！**
-
 ### 🎯 核心功能
 - **刘海通知显示** - 在 MacBook 刘海区域优雅地显示通知
-- **HTTP API 服务** - 通过简单的 REST API 发送通知（端口 9876）
+- **Unix Socket 通信** - 本地高性能通信通道 (`/tmp/notchnoti.sock`)，无需占用网络端口
 - **通知队列管理** - 智能队列系统，不丢失任何通知
 - **优先级系统** - 4 级优先级（低/普通/高/紧急）
 - **通知合并** - 自动合并相同来源的连续通知
 - **历史记录** - LRU 缓存管理，保存最近 100 条通知
 - **Diff 预览** - 支持代码改动对比预览窗口
+- **多语言支持** - 简体中文/英文界面切换
+- **触感反馈** - 支持系统触控板震动反馈
 - **通知声音** - 可配置的系统提示音
 
 ### 🎨 全新视觉效果（超酷动画升级！）
@@ -51,10 +51,13 @@
 - **GPU 加速** - 所有动画使用 Metal 渲染，超级流畅
 
 ### 🔌 Claude Code 集成
-- **深度集成** - 完美配合 Claude Code 使用
+- **一键配置** - 通过设置界面自动配置 Claude Code Hooks
+- **智能检测** - 自动检测 Claude Code 安装状态
+- **Hook 集成** - 自动注入 notch-hook 二进制文件
 - **智能过滤** - 自动过滤不重要的操作
 - **实时监控** - 查看 AI 正在执行的操作
 - **等待提醒** - Claude 需要确认时紧急通知
+- **工作目录同步** - 自动跟踪当前工作目录
 
 ## 📦 安装
 
@@ -73,49 +76,48 @@ cd DynamicNotch
 
 ## 🚀 使用方法
 
-### 基础 API
+### Unix Socket API
 
-发送通知到 `http://localhost:9876/notify`:
+通过 Unix Socket 发送通知到 `/tmp/notchnoti.sock`:
 
 ```bash
+# 使用 echo 和 nc (netcat) 发送通知
+echo '{"title": "✅ 构建成功", "message": "项目构建完成", "type": "success", "priority": 2}' | nc -U /tmp/notchnoti.sock
+
+# 或使用 Python 示例
+python3 -c "
+import socket
+import json
+
+sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+sock.connect('/tmp/notchnoti.sock')
+
 # 成功通知 - 带勾号动画和绿色光晕
-curl -X POST http://localhost:9876/notify \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "✅ 构建成功",
-    "message": "项目构建完成",
-    "type": "success",
-    "priority": 2
-  }'
+notification = {
+    'title': '✅ 构建成功',
+    'message': '项目构建完成',
+    'type': 'success',
+    'priority': 2
+}
+sock.send(json.dumps(notification).encode())
+sock.close()
+"
 
-# 庆祝通知 - 金色星星粒子雨
-curl -X POST http://localhost:9876/notify \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "🎉 里程碑达成",
-    "message": "恭喜！项目突破1000个Star",
-    "type": "celebration",
-    "priority": 3
-  }'
+# Node.js 示例
+node -e "
+const net = require('net');
+const client = net.createConnection('/tmp/notchnoti.sock');
 
-# 下载通知 - 带进度条
-curl -X POST http://localhost:9876/notify \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "⬇️ 下载中",
-    "message": "正在下载更新包...",
-    "type": "download",
-    "metadata": {"progress": "0.65"}
-  }'
+const notification = {
+    title: '🎉 里程碑达成',
+    message: '恭喜！项目突破1000个Star',
+    type: 'celebration',
+    priority: 3
+};
 
-# AI 通知 - 动态渐变背景
-curl -X POST http://localhost:9876/notify \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "🤖 AI 分析",
-    "message": "正在智能分析代码质量...",
-    "type": "ai"
-  }'
+client.write(JSON.stringify(notification));
+client.end();
+"
 ```
 
 ### 参数说明
@@ -137,23 +139,31 @@ curl -X POST http://localhost:9876/notify \
 
 ## 🤖 Claude Code 集成
 
-### 快速配置
+### 自动配置（推荐）
 
-1. 复制配置到你的项目：
-```bash
-cp -r /path/to/DynamicNotch/.claude /your/project/
-```
+1. **打开 NotchNoti 设置界面**
+   - 点击菜单栏图标 > 设置
+   - 或使用快捷键 `⌘,`
 
-2. 自动获得以下通知：
-- ✏️ 文件修改前警告
-- 🔔 需要确认时提醒  
-- ✨ 任务完成通知
-- ⚠️ 重要命令执行提醒
+2. **Claude Code 集成面板**
+   - 系统会自动检测 Claude Code 安装状态
+   - 点击"配置 Claude Code Hooks"按钮
+   - 自动完成 Hook 配置
 
-### 配置文件
+3. **自动获得以下通知**：
+   - ✏️ 文件修改前警告
+   - 🔔 需要确认时提醒  
+   - ✨ 任务完成通知
+   - ⚠️ 重要命令执行提醒
+   - 🔧 工具使用通知
+   - 📂 文件操作提醒
 
-- **标准版**: `.claude/settings.json` - 适度通知
-- **专注版**: `.claude/settings-focused.json` - 最少干扰
+### 手动配置
+
+如需手动配置，NotchNoti 会自动生成并管理 Claude Code 的 settings.json，包含：
+- Hook 二进制路径配置
+- 事件监听器配置
+- 通知过滤规则
 
 ## 💻 其他集成示例
 
@@ -161,23 +171,19 @@ cp -r /path/to/DynamicNotch/.claude /your/project/
 ```bash
 # .git/hooks/post-commit
 #!/bin/bash
-curl -X POST http://localhost:9876/notify \
-  -H "Content-Type: application/json" \
-  -d '{"title":"✅ Git 提交","message":"提交成功！看看勾号动画","type":"success"}'
+echo '{"title":"✅ Git 提交","message":"提交成功！看看勾号动画","type":"success"}' | nc -U /tmp/notchnoti.sock
 
 # .git/hooks/pre-push
 #!/bin/bash
-curl -X POST http://localhost:9876/notify \
-  -H "Content-Type: application/json" \
-  -d '{"title":"⬆️ Git Push","message":"正在推送到远程仓库...","type":"upload","metadata":{"progress":"0.5"}}'
+echo '{"title":"⬆️ Git Push","message":"正在推送到远程仓库...","type":"upload","metadata":{"progress":"0.5"}}' | nc -U /tmp/notchnoti.sock
 ```
 
 ### npm Scripts
 ```json
 {
   "scripts": {
-    "build": "webpack && curl -X POST http://localhost:9876/notify -d '{\"title\":\"🎉 构建完成\",\"message\":\"Webpack 构建成功！\",\"type\":\"celebration\"}' -H 'Content-Type: application/json'",
-    "test": "jest && curl -X POST http://localhost:9876/notify -d '{\"title\":\"✅ 测试通过\",\"message\":\"所有测试用例通过\",\"type\":\"success\",\"priority\":2}' -H 'Content-Type: application/json'"
+    "build": "webpack && echo '{\"title\":\"🎉 构建完成\",\"message\":\"Webpack 构建成功！\",\"type\":\"celebration\"}' | nc -U /tmp/notchnoti.sock",
+    "test": "jest && echo '{\"title\":\"✅ 测试通过\",\"message\":\"所有测试用例通过\",\"type\":\"success\",\"priority\":2}' | nc -U /tmp/notchnoti.sock"
   }
 }
 ```
@@ -187,10 +193,10 @@ curl -X POST http://localhost:9876/notify \
 {
   "tasks": [{
     "label": "Build with Notification",
-    "command": "npm run build && curl -X POST http://localhost:9876/notify -d '{\"title\":\"✅ 完成\",\"message\":\"构建成功！看勾号动画\",\"type\":\"success\",\"priority\":2}' -H 'Content-Type: application/json'"
+    "command": "npm run build && echo '{\"title\":\"✅ 完成\",\"message\":\"构建成功！看勾号动画\",\"type\":\"success\",\"priority\":2}' | nc -U /tmp/notchnoti.sock"
   }, {
     "label": "Deploy with Progress",
-    "command": "deploy.sh && curl -X POST http://localhost:9876/notify -d '{\"title\":\"🔄 部署中\",\"message\":\"正在同步到服务器...\",\"type\":\"sync\"}' -H 'Content-Type: application/json'"
+    "command": "deploy.sh && echo '{\"title\":\"🔄 部署中\",\"message\":\"正在同步到服务器...\",\"type\":\"sync\"}' | nc -U /tmp/notchnoti.sock"
   }]
 }
 ```
@@ -206,9 +212,11 @@ curl -X POST http://localhost:9876/notify \
 ## 🛠 技术栈
 
 - **SwiftUI** - 原生 macOS UI 框架
-- **Network.framework** - 原生网络框架
+- **Network.framework** - Unix Socket 通信
 - **Combine** - 响应式编程
 - **Swift 5.9** - 现代 Swift 特性
+- **Metal** - GPU 加速动画渲染
+- **NSHapticFeedbackManager** - 触控板震动反馈
 
 ## 📋 系统要求
 
@@ -220,9 +228,13 @@ curl -X POST http://localhost:9876/notify \
 欢迎提交 Issue 和 Pull Request！
 
 主要改进方向：
+- [x] Unix Socket 通信支持
+- [x] Claude Code 自动配置
+- [x] 多语言支持（中英文）
+- [x] 触感反馈
+- [x] 通知声音
 - [ ] 双向交互支持
 - [ ] 更多通知样式
-- [ ] 通知声音
 - [ ] 云同步历史
 
 ## 📄 许可
