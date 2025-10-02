@@ -1,88 +1,89 @@
 {
-  "hooks": {
-    "PreToolUse": [
+  "hooks" : {
+    "Notification" : [
       {
-        "matcher": ".*",
-        "hooks": [
+        "hooks" : [
           {
-            "type": "command",
-            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout": 2
+            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout" : 2,
+            "type" : "command"
           }
-        ]
+        ],
+        "matcher" : ".*"
       }
     ],
-    "PostToolUse": [
+    "PostToolUse" : [
       {
-        "matcher": ".*",
-        "hooks": [
+        "hooks" : [
           {
-            "type": "command",
-            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout": 2
+            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout" : 2,
+            "type" : "command"
           }
-        ]
+        ],
+        "matcher" : ".*"
       }
     ],
-    "UserPromptSubmit": [
+    "PreCompact" : [
       {
-        "matcher": ".*",
-        "hooks": [
+        "hooks" : [
           {
-            "type": "command",
-            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout": 2
+            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout" : 2,
+            "type" : "command"
           }
-        ]
+        ],
+        "matcher" : ".*"
       }
     ],
-    "Stop": [
+    "PreToolUse" : [
       {
-        "matcher": ".*",
-        "hooks": [
+        "hooks" : [
           {
-            "type": "command",
-            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout": 2
+            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout" : 2,
+            "type" : "command"
           }
-        ]
+        ],
+        "matcher" : ".*"
       }
     ],
-    "SessionStart": [
+    "SessionStart" : [
       {
-        "matcher": ".*",
-        "hooks": [
+        "hooks" : [
           {
-            "type": "command",
-            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout": 2
+            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout" : 2,
+            "type" : "command"
           }
-        ]
+        ],
+        "matcher" : ".*"
       }
     ],
-    "Notification": [
+    "Stop" : [
       {
-        "matcher": ".*",
-        "hooks": [
+        "hooks" : [
           {
-            "type": "command",
-            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout": 2
+            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout" : 2,
+            "type" : "command"
           }
-        ]
+        ],
+        "matcher" : ".*"
       }
     ],
-    "PreCompact": [
+    "UserPromptSubmit" : [
       {
-        "matcher": ".*",
-        "hooks": [
+        "hooks" : [
           {
-            "type": "command",
-            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout": 2
+            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout" : 2,
+            "type" : "command"
           }
-        ]
+        ],
+        "matcher" : ".*"
       }
     ]
-  }
+  },
+  "outputStyle" : "Explanatory"
 }
