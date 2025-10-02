@@ -15,6 +15,7 @@ struct NotchMenuView: View {
     var body: some View {
         HStack(spacing: vm.spacing) {
             history
+            stats
             clearNotifications
             settings
             setupClaudeCode
@@ -88,6 +89,18 @@ struct NotchMenuView: View {
         )
         .onTapGesture {
             vm.contentType = .history
+        }
+        .clipShape(RoundedRectangle(cornerRadius: vm.cornerRadius))
+    }
+
+    var stats: some View {
+        ColorButton(
+            color: [.cyan, .blue],
+            image: Image(systemName: "chart.bar.fill"),
+            title: "统计"
+        )
+        .onTapGesture {
+            vm.showStats()
         }
         .clipShape(RoundedRectangle(cornerRadius: vm.cornerRadius))
     }

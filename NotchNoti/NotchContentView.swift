@@ -33,6 +33,9 @@ struct NotchContentView: View {
                 case .settings:
                     NotchSettingsView(vm: vm)
                         .transition(AnyTransition.scale(scale: 0.8).combined(with: .opacity))
+                case .stats:
+                    NotchStatsView()
+                        .transition(AnyTransition.scale(scale: 0.8).combined(with: .opacity))
                 case .history:
                     // 历史页面直接使用通知中心主界面
                     NotificationCenterMainView()

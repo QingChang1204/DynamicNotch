@@ -160,8 +160,13 @@ class UnixSocketServerSimple: ObservableObject {
                 metadata: notification.metadata
             )
             
-            // 在主线程添加通知
+            // 在主线程添加通知和处理统计
             DispatchQueue.main.async {
+                // 处理统计信息
+                if let metadata = notification.metadata {
+                    self.processStatistics(metadata: metadata)
+                }
+
                 NotificationManager.shared.addNotification(notchNotification)
                 if NotchViewModel.shared?.status != .opened {
                     NotchViewModel.shared?.notchOpen(.drag)
@@ -190,5 +195,51 @@ class UnixSocketServerSimple: ObservableObject {
     // 获取当前 socket 路径
     func getCurrentSocketPath() -> String? {
         return isRunning ? socketPath : nil
+    }
+
+    // 处理统计信息
+    private func processStatistics(metadata: [String: String]) {
+        guard let eventType = metadata["event_type"] else { return }
+
+        switch eventType {
+        case "session_start":
+            if let sessionId = metadata["session_id"],
+               let projectName = metadata["project"] {
+                StatisticsManager.shared.startSession(sessionId: sessionId, projectName: projectName)
+            }
+
+        case "tool_success", "tool_complete":
+            if let toolName = metadata["tool_name"],
+               let durationStr = metadata["duration"],
+               let duration = TimeInterval(durationStr) {
+                StatisticsManager.shared.recordToolUse(toolName: toolName, success: true, duration: duration)
+            }
+
+        case "tool_error":
+            if let toolName = metadata["tool_name"] {
+                let errorMessage = metadata["error_message"] ?? "Unknown error"
+                let context = metadata["context"]
+
+                // 记录错误
+                let error = ErrorRecord(
+                    toolName: toolName,
+                    errorMessage: errorMessage,
+                    context: context,
+                    metadata: metadata
+                )
+                StatisticsManager.shared.recordError(error)
+
+                // 记录工具使用（失败）
+                if let durationStr = metadata["duration"],
+                   let duration = TimeInterval(durationStr) {
+                    StatisticsManager.shared.recordToolUse(toolName: toolName, success: false, duration: duration)
+                } else {
+                    StatisticsManager.shared.recordToolUse(toolName: toolName, success: false, duration: 0)
+                }
+            }
+
+        default:
+            break
+        }
     }
 }

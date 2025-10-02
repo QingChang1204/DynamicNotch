@@ -47,6 +47,7 @@ class NotchViewModel: NSObject, ObservableObject {
         case menu
         case settings
         case history
+        case stats
     }
 
     var notchOpenedRect: CGRect {
@@ -103,6 +104,10 @@ class NotchViewModel: NSObject, ObservableObject {
 
     func showSettings() {
         contentType = .settings
+    }
+
+    func showStats() {
+        contentType = .stats
     }
 
     func notchPop() {

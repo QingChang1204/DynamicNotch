@@ -1,89 +1,96 @@
 {
-  "hooks" : {
-    "Notification" : [
+  "permissions": {
+    "allow": [
+      "Bash(codesign:*)",
+      "Bash(/usr/bin/codesign:*)",
+      "Bash(hdiutil create:*)"
+    ]
+  },
+  "hooks": {
+    "Notification": [
       {
-        "hooks" : [
+        "matcher": ".*",
+        "hooks": [
           {
-            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout" : 2,
-            "type" : "command"
+            "type": "command",
+            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout": 2
           }
-        ],
-        "matcher" : ".*"
+        ]
       }
     ],
-    "PostToolUse" : [
+    "PostToolUse": [
       {
-        "hooks" : [
+        "matcher": ".*",
+        "hooks": [
           {
-            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout" : 2,
-            "type" : "command"
+            "type": "command",
+            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout": 2
           }
-        ],
-        "matcher" : ".*"
+        ]
       }
     ],
-    "PreCompact" : [
+    "PreCompact": [
       {
-        "hooks" : [
+        "matcher": ".*",
+        "hooks": [
           {
-            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout" : 2,
-            "type" : "command"
+            "type": "command",
+            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout": 2
           }
-        ],
-        "matcher" : ".*"
+        ]
       }
     ],
-    "PreToolUse" : [
+    "PreToolUse": [
       {
-        "hooks" : [
+        "matcher": ".*",
+        "hooks": [
           {
-            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout" : 2,
-            "type" : "command"
+            "type": "command",
+            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout": 2
           }
-        ],
-        "matcher" : ".*"
+        ]
       }
     ],
-    "SessionStart" : [
+    "SessionStart": [
       {
-        "hooks" : [
+        "matcher": ".*",
+        "hooks": [
           {
-            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout" : 2,
-            "type" : "command"
+            "type": "command",
+            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout": 2
           }
-        ],
-        "matcher" : ".*"
+        ]
       }
     ],
-    "Stop" : [
+    "Stop": [
       {
-        "hooks" : [
+        "matcher": ".*",
+        "hooks": [
           {
-            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout" : 2,
-            "type" : "command"
+            "type": "command",
+            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout": 2
           }
-        ],
-        "matcher" : ".*"
+        ]
       }
     ],
-    "UserPromptSubmit" : [
+    "UserPromptSubmit": [
       {
-        "hooks" : [
+        "matcher": ".*",
+        "hooks": [
           {
-            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout" : 2,
-            "type" : "command"
+            "type": "command",
+            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout": 2
           }
-        ],
-        "matcher" : ".*"
+        ]
       }
     ]
   },
-  "outputStyle" : "Explanatory"
+  "outputStyle": "Explanatory"
 }
