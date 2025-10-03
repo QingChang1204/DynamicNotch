@@ -94,16 +94,13 @@ hdiutil create -volname "NotchNoti" \
   - Weak timer references to avoid memory leaks
 
 **Communication Servers**
-- `UnixSocketServerSimple.swift`: BSD socket server in sandbox container
+- `UnixSocketServerSimple.swift`: **Primary notification receiver** (BSD socket)
   - Path: `NSHomeDirectory()/.notch.sock` → `~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock`
   - Processes statistics metadata from hook events
   - Calls `StatisticsManager.shared` to record session/tool/error data
+  - Parses `NotificationRequest` JSON and feeds into `NotificationManager`
   - Background queue processing (`.userInteractive` QoS)
-- `NotificationServer.swift`: HTTP server on port 9876
-  - Endpoints: `/notify` (POST), `/health` (GET)
-  - CORS headers for local web access
-  - Background queue processing (`.userInteractive` QoS)
-- Both parse `NotificationRequest` and feed into `NotificationManager`
+  - **Note**: HTTP server (NotificationServer.swift) was removed in recent cleanup
 
 **Dual Statistics System**
 - `Statistics.swift` - **Work Session Tracking**:
@@ -113,6 +110,11 @@ hdiutil create -volname "NotchNoti" \
   - Work mode classification: writing, researching, debugging, developing, exploring
   - Intensity levels based on pace (operations per minute)
   - Today/weekly trend analysis
+  - **Graphical Dashboard UI** (600×160px optimized):
+    - Left: 90×90px circular progress ring showing session duration
+    - Center: Vertical bar chart for TOP 6 tools with gradient fills
+    - Right: Today summary card with icon+number combinations
+    - Single-page horizontal layout (no tabs/scrolling)
 - `NotificationStats.swift` - **Notification Analytics**:
   - `NotificationStatsManager`: Notification distribution tracking
   - Type distribution (success/error/warning/etc.)
@@ -135,8 +137,15 @@ hdiutil create -volname "NotchNoti" \
 - `NotificationView.swift`: Individual notification rendering with type-specific animations
 - `NotificationEffects.swift`: Visual effects (particle systems, gradients, glows)
 - `NotchMenuView.swift`: Menu with history, settings, stats buttons
-- `NotchStatsView.swift`: Compact statistics interface with page switching (3 pages)
-- `CompactNotificationStatsView`: Notification statistics with ring chart visualization
+- `NotchCompactViews.swift`: Compact views optimized for 600×160 notch area
+  - `CompactNotificationHistoryView`: Vertical list with search (max 6 items)
+  - `CompactStatsView`: Routes to work session statistics dashboard
+  - `CompactAIAnalysisView`: AI insights with project selection
+- `Statistics.swift`: Work session statistics with graphical dashboard
+  - `CompactWorkSessionStatsView`: Three-column horizontal layout
+    - Circular progress ring (session duration)
+    - Vertical bar chart (TOP 6 tools)
+    - Today summary card (sessions/time/ops)
 
 **Event Handling** (`EventMonitors.swift`, `EventMonitor.swift`)
 - Global mouse and keyboard event monitoring
@@ -156,10 +165,11 @@ hdiutil create -volname "NotchNoti" \
 
 ### Critical Architecture Details
 
-**Bundle Identifier Mismatch**:
-- Xcode project: `wiki.qaq.NotchNoti`
-- Rust hook hardcodes: `com.qingchang.notchnoti`
-- **Important**: If changing Bundle ID, must update Rust hook path logic
+**Bundle Identifier** (Unified):
+- **All components now use**: `com.qingchang.notchnoti`
+- Xcode project: `com.qingchang.notchnoti`
+- Rust hook: `com.qingchang.notchnoti`
+- Unified in recent updates for consistency
 
 **Socket Path Resolution**:
 - Swift: Uses `NSHomeDirectory()` which returns sandbox container path in sandboxed builds
@@ -238,7 +248,7 @@ Each type has unique animations defined in `NotificationEffects.swift`:
 
 ## Notification API
 
-### Unix Socket (Recommended)
+### Unix Socket (Primary Method)
 Socket path: `~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock`
 
 ```bash
@@ -247,12 +257,7 @@ echo '{"title":"Test","message":"Hello","type":"success","priority":2}' | \
   nc -U ~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock
 ```
 
-### HTTP Server
-```bash
-curl -X POST http://localhost:9876/notify \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Test","message":"Hello","type":"info","priority":1}'
-```
+**Note**: HTTP server was removed in recent updates. Unix socket is now the only communication method.
 
 ### JSON Schema
 ```json
@@ -288,6 +293,17 @@ curl -X POST http://localhost:9876/notify \
 - Recommended: ProMotion display for 120Hz animations
 
 ## Development Notes
+
+### Removed Files (Cleanup History)
+
+The following files were removed during iterative development cleanup:
+- **AISettingsWindow.swift** (281 lines) - Old AI settings window version 1, replaced by newer implementation
+- **AISettingsWindowController.swift** (284 lines) - Old AI settings window version 2, unused
+- **NotificationServer.swift** (~200 lines) - HTTP server, functionality moved to UnixSocketServerSimple.swift
+- **build-dmg.sh** - Simple DMG build script, replaced by build-dmg-signed.sh
+- **build-dmg-distribution.sh** - Old distribution script, replaced by build-dmg-signed.sh
+
+If you encounter references to these files in old documentation, they no longer exist.
 
 ### UI Design Constraints - CRITICAL
 
@@ -347,11 +363,11 @@ Current logic:
 - Diff notifications: fixed 2.0s
 
 ### Extending Communication API
-Both servers parse `NotificationRequest` struct. To add fields:
-1. Update `NotificationRequest` in `NotificationServer.swift`
+The Unix socket server parses `NotificationRequest` struct. To add fields:
+1. Update `NotificationRequest` struct in `NotificationModel.swift`
 2. Update parsing in `UnixSocketServerSimple.swift`
 3. Update `NotchNotification` model in `NotificationModel.swift`
-4. Update mapping logic in `handleNotificationRequest()`
+4. Update mapping logic in `handleNotificationRequest()` in `UnixSocketServerSimple.swift`
 
 ### Rebuilding Hook Binary After Code Changes
 
@@ -386,10 +402,7 @@ ls -la ~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock
 echo '{"title":"Test","message":"Socket working!","type":"success","priority":2}' | \
   nc -U ~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock
 
-# 3. Test HTTP endpoint
-curl http://localhost:9876/health
-
-# 4. Monitor hook output (when running from Xcode)
+# 3. Monitor hook output (when running from Xcode)
 # Check Xcode console for [UnixSocket], [NotificationManager], [DEBUG] prefixed logs
 ```
 
