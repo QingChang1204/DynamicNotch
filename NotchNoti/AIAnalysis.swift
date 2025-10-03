@@ -121,6 +121,47 @@ class AIAnalysisManager: ObservableObject {
         }
     }
 
+    // 分析通知统计数据
+    func analyzeNotifications(summary: StatsSummary) async {
+        guard let config = loadConfig() else {
+            lastError = "请先配置LLM设置"
+            return
+        }
+
+        // 生成缓存key（使用总数+时间戳哈希）
+        let cacheKey = "notif_\(summary.totalCount)_\(summary.startTime.timeIntervalSince1970)"
+        if let cachedAnalysis = getCachedAnalysis(for: cacheKey) {
+            lastAnalysis = cachedAnalysis
+            return
+        }
+
+        isAnalyzing = true
+        lastError = nil
+
+        // 生成通知统计摘要
+        let notifSummary = generateNotificationSummary(summary)
+
+        // 调用LLM
+        do {
+            let response = try await callLLM(
+                baseURL: config.baseURL,
+                model: config.model,
+                apiKey: config.apiKey,
+                temperature: config.temperature,
+                prompt: buildNotificationAnalysisPrompt(notifSummary)
+            )
+
+            // 保存到缓存
+            cacheAnalysis(response, for: cacheKey)
+
+            lastAnalysis = response
+            isAnalyzing = false
+        } catch {
+            lastError = "分析失败: \(error.localizedDescription)"
+            isAnalyzing = false
+        }
+    }
+
     // 获取缓存的分析结果
     private func getCachedAnalysis(for sessionKey: String) -> String? {
         guard let timestamp = cacheTimestamps[sessionKey],
@@ -175,6 +216,30 @@ class AIAnalysisManager: ObservableObject {
         return summary
     }
 
+    // 生成通知统计摘要
+    private func generateNotificationSummary(_ summary: StatsSummary) -> String {
+        let elapsed = Date().timeIntervalSince(summary.startTime)
+        let hours = Int(elapsed / 3600)
+        let minutes = Int((elapsed.truncatingRemainder(dividingBy: 3600)) / 60)
+
+        var text = """
+        统计时长: \(hours)小时\(minutes)分钟
+        通知总数: \(summary.totalCount)条
+        通知频率: \(String(format: "%.1f", summary.avgPerHour))条/小时
+        """
+
+        if let topType = summary.topType {
+            let percentage = Int(Double(topType.count) / Double(summary.totalCount) * 100)
+            text += "\n最多类型: \(topType.type.rawValue) \(topType.count)条 (占\(percentage)%)"
+        }
+
+        if let activeTime = summary.activeTime {
+            text += "\n活跃时段: \(activeTime.slot.rawValue) \(activeTime.count)条"
+        }
+
+        return text
+    }
+
     // 构建分析Prompt（优化版v1 - 2025-10-03）
     private func buildAnalysisPrompt(_ summary: String) -> String {
         """
@@ -197,6 +262,33 @@ class AIAnalysisManager: ObservableObject {
         【示例】
         - 好：高强度编辑模式，建议趁热打铁完成核心功能，明天处理重构
         - 差：工作状态很好，建议继续保持
+
+        直接输出你的分析：
+        """
+    }
+
+    // 构建通知分析Prompt
+    private func buildNotificationAnalysisPrompt(_ summary: String) -> String {
+        """
+        你是工作模式分析专家，擅长从通知模式中发现工作规律。
+
+        【通知统计】
+        \(summary)
+
+        【任务】
+        用一句话（40-60字）回答：
+        1. 这段时间的工作特征是什么？
+        2. 有什么值得注意的模式或建议？
+
+        【要求】
+        ✓ 直接给洞察，不要重复数据
+        ✓ 具体可执行（如"Error类型过多，建议检查X"）
+        ✓ 积极正面的语气
+        ✗ 避免："很好"、"继续保持"等空话
+
+        【示例】
+        - 好：工具调用频繁但错误率低，当前节奏很稳，建议保持专注完成核心任务
+        - 差：通知数量正常，建议继续保持
 
         直接输出你的分析：
         """

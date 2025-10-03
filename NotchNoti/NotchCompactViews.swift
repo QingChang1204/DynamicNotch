@@ -18,14 +18,14 @@ struct CompactNotificationHistoryView: View {
                 emptyState
             } else {
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 8) {
+                    LazyVStack(spacing: 1) {
                         ForEach(manager.notificationHistory.prefix(6)) { notification in
                             CompactNotificationRow(notification: notification)
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 12)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+                    .padding(.bottom, 8)
                 }
             }
 
@@ -34,79 +34,77 @@ struct CompactNotificationHistoryView: View {
                 NotchViewModel.shared?.contentType = .normal
             }) {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 18))
+                    .font(.system(size: 16))
                     .foregroundColor(.white.opacity(0.4))
-                    .background(Circle().fill(Color.black.opacity(0.3)))
+                    .background(Circle().fill(Color.black.opacity(0.2)))
             }
             .buttonStyle(PlainButtonStyle())
-            .padding(12)
+            .padding(10)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black.opacity(0.2))
+        .background(Color.black.opacity(0.15))
     }
 
     private var emptyState: some View {
         VStack(spacing: 12) {
-            Image(systemName: "tray")
-                .font(.system(size: 36))
-                .foregroundColor(.white.opacity(0.2))
+            Image(systemName: "bell.slash")
+                .font(.system(size: 32))
+                .foregroundColor(.white.opacity(0.25))
             Text("暂无通知")
-                .font(.system(size: 12))
+                .font(.system(size: 11))
                 .foregroundColor(.white.opacity(0.5))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
-// 单行通知 - 卡片式设计
+// 单行通知 - iOS风格列表设计
 struct CompactNotificationRow: View {
     let notification: NotchNotification
 
     var body: some View {
-        HStack(spacing: 12) {
-            // 图标
+        HStack(spacing: 10) {
+            // 图标 - 更小更精致
             ZStack {
-                Circle()
-                    .fill(notification.color.opacity(0.15))
-                    .frame(width: 32, height: 32)
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(notification.color.opacity(0.18))
+                    .frame(width: 28, height: 28)
 
                 Image(systemName: notification.systemImage)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(notification.color)
             }
 
             // 文字内容
-            VStack(alignment: .leading, spacing: 3) {
-                Text(notification.title)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.95))
-                    .lineLimit(1)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(notification.title)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.95))
+                        .lineLimit(1)
+
+                    Spacer(minLength: 4)
+
+                    // 时间标签 - 右上角
+                    Text(timeAgo(notification.timestamp))
+                        .font(.system(size: 9, design: .rounded))
+                        .foregroundColor(.white.opacity(0.35))
+                        .monospacedDigit()
+                }
 
                 if !notification.message.isEmpty {
                     Text(notification.message)
-                        .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.55))
+                        .font(.system(size: 10))
+                        .foregroundColor(.white.opacity(0.5))
                         .lineLimit(1)
                 }
             }
-
-            Spacer(minLength: 8)
-
-            // 时间标签
-            Text(timeAgo(notification.timestamp))
-                .font(.system(size: 10, weight: .medium, design: .rounded))
-                .foregroundColor(.white.opacity(0.4))
-                .monospacedDigit()
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.white.opacity(0.05))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+            Rectangle()
+                .fill(Color.white.opacity(0.04))
         )
     }
 
@@ -134,10 +132,12 @@ struct CompactStatsView: View {
 
 struct CompactAIAnalysisView: View {
     @ObservedObject var aiManager = AIAnalysisManager.shared
-    @ObservedObject var statsManager = StatisticsManager.shared
+    @ObservedObject var notifStatsManager = NotificationStatsManager.shared
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
+            let summary = notifStatsManager.getSummary()
+
             if aiManager.isAnalyzing {
                 analyzingState
             } else if let error = aiManager.lastError {
@@ -145,21 +145,13 @@ struct CompactAIAnalysisView: View {
             } else if let analysis = aiManager.lastAnalysis {
                 resultView(analysis)
             } else {
-                initialState
+                initialState(summary: summary)
             }
 
             closeButton
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black.opacity(0.2))
-        .onAppear {
-            // 自动分析一次
-            if aiManager.lastAnalysis == nil,
-               statsManager.currentSession != nil,
-               aiManager.loadConfig() != nil {
-                Task { await aiManager.analyzeCurrentSession() }
-            }
-        }
+        .background(Color.black.opacity(0.15))
     }
 
     // 分析中状态
@@ -301,45 +293,68 @@ struct CompactAIAnalysisView: View {
     }
 
     // 初始状态
-    private var initialState: some View {
-        HStack(spacing: 12) {
+    private func initialState(summary: StatsSummary) -> some View {
+        VStack(spacing: 16) {
             ZStack {
                 Circle()
-                    .fill(Color.purple.opacity(0.15))
-                    .frame(width: 48, height: 48)
+                    .fill(
+                        LinearGradient(
+                            colors: [.purple.opacity(0.3), .pink.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 56, height: 56)
+                    .blur(radius: 8)
 
                 Image(systemName: "sparkles")
-                    .font(.system(size: 22))
+                    .font(.system(size: 24))
                     .foregroundColor(.purple)
             }
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(spacing: 8) {
                 Text("AI 工作洞察")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white)
 
-                if statsManager.currentSession != nil {
-                    Button("开始分析") {
-                        Task { await aiManager.analyzeCurrentSession() }
+                if summary.totalCount > 0, aiManager.loadConfig() != nil {
+                    Button(action: {
+                        Task {
+                            await aiManager.analyzeNotifications(summary: summary)
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "wand.and.stars")
+                            Text("分析通知模式")
+                        }
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            LinearGradient(
+                                colors: [.purple, .pink],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(6)
+                    }
+                    .buttonStyle(.plain)
+                } else if summary.totalCount == 0 {
+                    Text("暂无通知数据")
+                        .font(.system(size: 10))
+                        .foregroundColor(.white.opacity(0.5))
+                } else {
+                    Button("配置AI分析") {
+                        AISettingsWindowManager.shared.show()
                     }
                     .font(.system(size: 10))
                     .buttonStyle(.borderless)
-                } else {
-                    Text("开始工作后可分析")
-                        .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.5))
                 }
-
-                Button("配置LLM") {
-                    AISettingsWindowManager.shared.show()
-                }
-                .font(.system(size: 9))
-                .buttonStyle(.borderless)
             }
-
-            Spacer()
         }
-        .padding(.leading, 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var closeButton: some View {
