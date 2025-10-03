@@ -38,9 +38,43 @@ class NotificationStatsManager: ObservableObject {
         let timeSlot = getTimeSlot(hour: hour)
         stats.timeDistribution[timeSlot, default: 0] += 1
 
+        // 新增：提取工具使用信息
+        if let metadata = notification.metadata {
+            if let toolName = metadata["tool_name"] {
+                stats.toolUsage[toolName, default: 0] += 1
+            }
+
+            // 分类操作类型
+            let actionType = classifyAction(notification: notification, metadata: metadata)
+            if let action = actionType {
+                stats.actionTypes[action, default: 0] += 1
+            }
+        }
+
         // 保存统计数据
         saveStats()
         objectWillChange.send()
+    }
+
+    // 分类操作类型
+    private func classifyAction(notification: NotchNotification, metadata: [String: String]) -> String? {
+        if let toolName = metadata["tool_name"] {
+            switch toolName {
+            case "Edit", "Write", "MultiEdit":
+                return "文件修改"
+            case "Bash":
+                return "命令执行"
+            case "Task":
+                return "Agent任务"
+            case "Read", "Grep", "Glob":
+                return "代码查询"
+            case "WebFetch", "WebSearch":
+                return "网络请求"
+            default:
+                return "其他操作"
+            }
+        }
+        return nil
     }
 
     // 重置统计
@@ -103,12 +137,51 @@ class NotificationStatsManager: ObservableObject {
         let hours = max(elapsed / 3600.0, 1.0)
         let avgPerHour = Double(total) / hours
 
+        // 新增：TOP3 类型统计
+        let top3Types = stats.typeDistribution
+            .sorted { $0.value > $1.value }
+            .prefix(3)
+            .map { (type: $0.key, count: $0.value) }
+
+        // 新增：优先级统计
+        let priorityStats = (
+            urgent: stats.priorityDistribution[.urgent] ?? 0,
+            high: stats.priorityDistribution[.high] ?? 0,
+            normal: stats.priorityDistribution[.normal] ?? 0,
+            low: stats.priorityDistribution[.low] ?? 0
+        )
+
+        // 新增：时间趋势（简单版：比较最近1小时 vs 之前平均）
+        let timeTrend: String = {
+            if hours < 2 { return "数据不足" }
+            let recentHourAvg = avgPerHour  // 简化：用整体平均代表趋势
+            if recentHourAvg > 5 { return "活跃" }
+            else if recentHourAvg > 2 { return "稳定" }
+            else { return "平缓" }
+        }()
+
+        // 新增：TOP3 工具使用统计
+        let topTools = stats.toolUsage
+            .sorted { $0.value > $1.value }
+            .prefix(3)
+            .map { (tool: $0.key, count: $0.value) }
+
+        // 新增：操作类型汇总
+        let actionSummary = stats.actionTypes
+            .sorted { $0.value > $1.value }
+            .map { (action: $0.key, count: $0.value) }
+
         return StatsSummary(
             totalCount: total,
             topType: topTypeInfo,
             activeTime: activeTimeInfo,
             avgPerHour: avgPerHour,
-            startTime: stats.startTime
+            startTime: stats.startTime,
+            top3Types: top3Types,
+            priorityStats: priorityStats,
+            timeTrend: timeTrend,
+            topTools: topTools,
+            actionSummary: actionSummary
         )
     }
 }
@@ -128,6 +201,12 @@ struct NotificationStatistics: Codable {
 
     // 时间段分布
     var timeDistribution: [TimeSlot: Int] = [:]
+
+    // 新增：工具使用统计
+    var toolUsage: [String: Int] = [:]  // tool_name -> count
+
+    // 新增：操作类型统计
+    var actionTypes: [String: Int] = [:]  // "文件修改"/"命令执行"/"AI分析" -> count
 }
 
 enum TimeSlot: String, Codable, CaseIterable {
@@ -143,6 +222,15 @@ struct StatsSummary {
     let activeTime: (slot: TimeSlot, count: Int)?
     let avgPerHour: Double
     let startTime: Date
+
+    // 扩展统计维度
+    let top3Types: [(type: NotchNotification.NotificationType, count: Int)]
+    let priorityStats: (urgent: Int, high: Int, normal: Int, low: Int)
+    let timeTrend: String  // "上升"、"稳定"、"下降"
+
+    // 新增：具体操作信息
+    let topTools: [(tool: String, count: Int)]  // TOP3 工具
+    let actionSummary: [(action: String, count: Int)]  // 操作分类汇总
 }
 
 // MARK: - 紧凑通知统计视图

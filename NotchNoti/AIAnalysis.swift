@@ -216,25 +216,67 @@ class AIAnalysisManager: ObservableObject {
         return summary
     }
 
-    // 生成通知统计摘要
+    // 生成通知统计摘要（优化版v2）
     private func generateNotificationSummary(_ summary: StatsSummary) -> String {
         let elapsed = Date().timeIntervalSince(summary.startTime)
         let hours = Int(elapsed / 3600)
         let minutes = Int((elapsed.truncatingRemainder(dividingBy: 3600)) / 60)
 
         var text = """
+        【基础数据】
         统计时长: \(hours)小时\(minutes)分钟
         通知总数: \(summary.totalCount)条
         通知频率: \(String(format: "%.1f", summary.avgPerHour))条/小时
+        工作节奏: \(summary.timeTrend)
         """
 
-        if let topType = summary.topType {
-            let percentage = Int(Double(topType.count) / Double(summary.totalCount) * 100)
-            text += "\n最多类型: \(topType.type.rawValue) \(topType.count)条 (占\(percentage)%)"
+        // TOP3 通知类型
+        if !summary.top3Types.isEmpty {
+            text += "\n\n【类型分布 TOP3】"
+            for (index, item) in summary.top3Types.enumerated() {
+                let percentage = Int(Double(item.count) / Double(summary.totalCount) * 100)
+                text += "\n\(index + 1). \(item.type.rawValue): \(item.count)条 (\(percentage)%)"
+            }
         }
 
+        // 优先级分析
+        let ps = summary.priorityStats
+        let totalPriority = ps.urgent + ps.high + ps.normal + ps.low
+        if totalPriority > 0 {
+            text += "\n\n【优先级分布】"
+            if ps.urgent > 0 {
+                text += "\n紧急: \(ps.urgent)条 (\(Int(Double(ps.urgent) / Double(totalPriority) * 100))%)"
+            }
+            if ps.high > 0 {
+                text += "\n高: \(ps.high)条 (\(Int(Double(ps.high) / Double(totalPriority) * 100))%)"
+            }
+            text += "\n普通: \(ps.normal)条 (\(Int(Double(ps.normal) / Double(totalPriority) * 100))%)"
+            if ps.low > 0 {
+                text += "\n低: \(ps.low)条 (\(Int(Double(ps.low) / Double(totalPriority) * 100))%)"
+            }
+        }
+
+        // 时间段
         if let activeTime = summary.activeTime {
-            text += "\n活跃时段: \(activeTime.slot.rawValue) \(activeTime.count)条"
+            text += "\n\n【时间特征】"
+            text += "\n最活跃时段: \(activeTime.slot.rawValue) (\(activeTime.count)条)"
+        }
+
+        // 工具使用 TOP3
+        if !summary.topTools.isEmpty {
+            text += "\n\n【工具使用 TOP3】"
+            for (index, item) in summary.topTools.enumerated() {
+                text += "\n\(index + 1). \(item.tool): \(item.count)次"
+            }
+        }
+
+        // 操作分类
+        if !summary.actionSummary.isEmpty {
+            text += "\n\n【操作分类】"
+            for item in summary.actionSummary {
+                let percentage = Int(Double(item.count) / Double(summary.totalCount) * 100)
+                text += "\n\(item.action): \(item.count)次 (\(percentage)%)"
+            }
         }
 
         return text
@@ -267,30 +309,54 @@ class AIAnalysisManager: ObservableObject {
         """
     }
 
-    // 构建通知分析Prompt
+    // 构建通知分析Prompt（优化版v3 - 2025-10-03 - 专业化）
     private func buildNotificationAnalysisPrompt(_ summary: String) -> String {
         """
-        你是工作模式分析专家，擅长从通知模式中发现工作规律。
+        你是资深开发效率教练，擅长从具体工具使用数据中识别工作模式并给出针对性建议。
 
-        【通知统计】
         \(summary)
 
-        【任务】
-        用一句话（40-60字）回答：
-        1. 这段时间的工作特征是什么？
-        2. 有什么值得注意的模式或建议？
+        【分析任务】
+        基于上述数据，生成一条专业洞察（40-60字）。
 
-        【要求】
-        ✓ 直接给洞察，不要重复数据
-        ✓ 具体可执行（如"Error类型过多，建议检查X"）
-        ✓ 积极正面的语气
-        ✗ 避免："很好"、"继续保持"等空话
+        【分析要点】
+        1. **工具使用模式**: 关注具体工具频率（Edit/Bash/Task/Read/Grep等）
+           - Edit/Write 主导 → 代码编辑为主
+           - Bash 频繁 → 命令执行/自动化测试
+           - Task 出现 → Agent任务/复杂操作
+           - Read/Grep 为主 → 代码审查/信息查询
 
-        【示例】
-        - 好：工具调用频繁但错误率低，当前节奏很稳，建议保持专注完成核心任务
-        - 差：通知数量正常，建议继续保持
+        2. **操作类型识别**: 根据操作分类判断工作阶段
+           - 文件修改 >60% → 代码迭代阶段
+           - 命令执行 >40% → 测试/构建阶段
+           - 代码查询 >50% → 学习/审查阶段
 
-        直接输出你的分析：
+        3. **问题识别**: 根据错误率和优先级给出建议
+           - Error类型 >30% → 需要排查问题
+           - 紧急优先级 >20% → 处于应急模式
+
+        【输出格式】
+        [关键词]：具体洞察 + 建议
+
+        关键词示例: 高频编辑 | 命令密集 | 混合开发 | 问题排查 | 信息检索
+
+        【输出要求】
+        ✅ 提及具体工具名称（如"Edit工具占65%"）
+        ✅ 根据操作分类给出判断（如"文件修改为主，处于迭代阶段"）
+        ✅ 给出可执行建议（如"建议完成后进行代码审查"）
+        ✅ 专业务实，避免空话
+        ❌ 禁止使用emoji表情符号
+        ❌ 禁止重复数据（如"通知总数XX条"）
+        ❌ 禁止空泛建议（如"继续保持"、"很好"）
+
+        【示例输出】
+        ✅ 高频编辑：Edit工具占65%，文件修改为主，当前处于代码迭代阶段，建议完成后进行代码审查
+        ✅ 命令密集：Bash执行占40%且错误率低，自动化脚本运行顺畅，可考虑集成CI/CD流程
+        ✅ 问题排查：Error类型占35%，Task任务频繁出现，建议优先处理高优先级错误后再开展新功能
+        ✅ 混合开发：Read/Edit各占30%，代码查询与修改并重，处于学习新代码并迭代阶段
+        ❌ 工作正常，通知频率稳定，建议继续保持
+
+        直接输出你的分析（一行，40-60字）：
         """
     }
 

@@ -63,6 +63,9 @@ struct NotchMenuView: View {
             }
 
             Button(action: {
+                // 清空通知统计（新系统）
+                NotificationStatsManager.shared.resetStats()
+                // 也清空旧的工作会话统计（保持兼容）
                 StatisticsManager.shared.sessionHistory.removeAll()
                 StatisticsManager.shared.currentSession = nil
                 vm.notchClose()
