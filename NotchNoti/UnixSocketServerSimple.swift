@@ -38,37 +38,43 @@ class UnixSocketServerSimple: ObservableObject {
         // 创建 socket
         serverSocket = socket(AF_UNIX, SOCK_STREAM, 0)
         guard serverSocket >= 0 else {
-            print("[UnixSocket] Failed to create socket")
+            print("[UnixSocket] ERROR: Failed to create socket - \(String(cString: strerror(errno)))")
+            serverSocket = -1
             return
         }
-        
+
         // 设置 socket 地址
         var addr = sockaddr_un()
         addr.sun_family = sa_family_t(AF_UNIX)
-        
+
         socketPath.withCString { ptr in
             withUnsafeMutablePointer(to: &addr.sun_path.0) { dest in
                 _ = strcpy(dest, ptr)
             }
         }
-        
+
         // 绑定 socket
         let bindResult = withUnsafePointer(to: &addr) { ptr in
             ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
                 bind(serverSocket, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
             }
         }
-        
+
         guard bindResult == 0 else {
-            print("[UnixSocket] Failed to bind: \(String(cString: strerror(errno)))")
+            print("[UnixSocket] ERROR: Failed to bind socket - \(String(cString: strerror(errno)))")
+            print("[UnixSocket] Socket path: \(socketPath)")
             close(serverSocket)
+            serverSocket = -1
+            cleanupSocket()  // 清理可能残留的 socket 文件
             return
         }
-        
+
         // 开始监听
         guard listen(serverSocket, 5) == 0 else {
-            print("[UnixSocket] Failed to listen: \(String(cString: strerror(errno)))")
+            print("[UnixSocket] ERROR: Failed to listen - \(String(cString: strerror(errno)))")
             close(serverSocket)
+            serverSocket = -1
+            cleanupSocket()
             return
         }
         

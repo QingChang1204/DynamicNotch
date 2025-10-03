@@ -174,7 +174,6 @@ class NotificationManager: ObservableObject {
     private let maxQueueSize = 10  // 最大队列长度
     private var displayDuration: TimeInterval = 1.0  // 基础显示时间
     private weak var hideTimer: Timer?  // 使用 weak 避免循环引用
-    private weak var closeTimer: Timer?
     private let timerQueue = DispatchQueue(label: "com.notchdrop.timer", qos: .userInteractive)
 
     // 持久层存储键
@@ -184,9 +183,16 @@ class NotificationManager: ObservableObject {
     private let mergeTimeWindow: TimeInterval = 0.5
     private var lastNotificationTime: Date?
     private var lastNotificationSource: String?
-    
+
     private init() {}
-    
+
+    deinit {
+        print("[NotificationManager] Deinit - 清理资源")
+        invalidateTimers()
+        // 注意：由于这是单例，deinit 在正常情况下不会被调用
+        // 但添加这个方法作为安全保障，防止未来架构调整时出现内存泄漏
+    }
+
     func addNotification(_ notification: NotchNotification) {
         // 确保在主线程执行
         if Thread.isMainThread {
@@ -200,15 +206,32 @@ class NotificationManager: ObservableObject {
     
     private func addNotificationOnMainThread(_ notification: NotchNotification) {
         print("[NotificationManager] 收到新通知: \(notification.title)")
-        
+
+        // 先添加到历史记录和统计（确保不会丢失任何通知）
+        addToHistory(notification)
+        NotificationStatsManager.shared.recordNotification(notification)
+
         // 检查是否可以合并通知
         if shouldMergeNotification(notification) {
             mergedCount += 1
             print("[NotificationManager] 合并通知，当前合并数: \(mergedCount)")
-            // 更新当前通知的标题显示合并数量
-            if var current = currentNotification {
-                current = NotchNotification(
-                    title: "\(current.title) (\(mergedCount + 1))",
+
+            // 更新当前通知的标题显示合并数量（使用正则替换避免重复添加括号）
+            if let current = currentNotification {
+                var updatedTitle = current.title
+
+                // 检查标题是否已包含合并计数
+                if let range = updatedTitle.range(of: #"\s*\(\d+\)$"#, options: .regularExpression) {
+                    // 已有计数，替换数字
+                    updatedTitle.removeSubrange(range)
+                }
+
+                // 添加新的计数（总共合并了 mergedCount + 1 个通知：原始 + 合并的）
+                updatedTitle = "\(updatedTitle) (\(mergedCount + 1))"
+
+                // 创建更新后的通知（保持所有其他属性不变）
+                let updatedNotification = NotchNotification(
+                    title: updatedTitle,
                     message: current.message,
                     type: current.type,
                     priority: current.priority,
@@ -216,9 +239,14 @@ class NotificationManager: ObservableObject {
                     actions: current.actions,
                     metadata: current.metadata
                 )
-                self.currentNotification = current
+
+                self.currentNotification = updatedNotification
+                print("[NotificationManager] 更新标题为: \(updatedTitle)")
             }
         } else {
+            // 重置合并计数（新的通知序列开始）
+            mergedCount = 0
+
             // 根据优先级处理通知
             if notification.priority == .urgent {
                 // 紧急通知立即显示
@@ -231,12 +259,6 @@ class NotificationManager: ObservableObject {
                 displayNotification(notification)
             }
         }
-        
-        // 添加到历史记录（使用 LRU 策略）
-        addToHistory(notification)
-
-        // 记录到统计系统
-        NotificationStatsManager.shared.recordNotification(notification)
 
         // 更新最后通知信息用于合并判断
         lastNotificationTime = Date()
@@ -256,12 +278,25 @@ class NotificationManager: ObservableObject {
     
     private func processUrgentNotification(_ notification: NotchNotification) {
         print("[NotificationManager] 处理紧急通知")
-        
+
         // 如果有正在显示的通知，将其加入队列前端
         if let current = currentNotification, current.priority != .urgent {
+            // 检查队列是否已满
+            if pendingNotifications.count >= maxQueueSize {
+                // 队列已满，移除优先级最低的通知为当前通知腾出空间
+                if let lowestPriorityIndex = pendingNotifications.indices.min(by: {
+                    pendingNotifications[$0].priority.rawValue < pendingNotifications[$1].priority.rawValue
+                }) {
+                    let removed = pendingNotifications.remove(at: lowestPriorityIndex)
+                    print("[NotificationManager] 队列已满，移除低优先级通知: \(removed.title)")
+                }
+            }
+
+            // 将当前通知插入队列前端（保证被打断的通知优先显示）
             pendingNotifications.insert(current, at: 0)
+            print("[NotificationManager] 当前通知已保存到队列，队列长度: \(pendingNotifications.count)")
         }
-        
+
         displayNotification(notification, duration: 2.0) // 紧急通知显示更久
     }
     
@@ -446,8 +481,6 @@ class NotificationManager: ObservableObject {
     private func invalidateTimers() {
         hideTimer?.invalidate()
         hideTimer = nil
-        closeTimer?.invalidate()
-        closeTimer = nil
     }
     
     func cancelHideTimer() {
