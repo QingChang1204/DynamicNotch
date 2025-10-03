@@ -141,9 +141,9 @@ struct CompactAIAnalysisView: View {
             if aiManager.isAnalyzing {
                 analyzingState
             } else if let error = aiManager.lastError {
-                errorState(error)
+                errorState(error, summary: summary)
             } else if let analysis = aiManager.lastAnalysis {
-                resultView(analysis)
+                resultView(analysis, summary: summary)
             } else {
                 initialState(summary: summary)
             }
@@ -193,7 +193,7 @@ struct CompactAIAnalysisView: View {
     }
 
     // 错误状态
-    private func errorState(_ error: String) -> some View {
+    private func errorState(_ error: String, summary: StatsSummary) -> some View {
         HStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 24))
@@ -210,7 +210,7 @@ struct CompactAIAnalysisView: View {
                     .lineLimit(1)
 
                 Button("重试") {
-                    Task { await aiManager.analyzeCurrentSession() }
+                    Task { await aiManager.analyzeNotifications(summary: summary) }
                 }
                 .font(.system(size: 9))
                 .buttonStyle(.borderless)
@@ -222,7 +222,7 @@ struct CompactAIAnalysisView: View {
     }
 
     // 分析结果
-    private func resultView(_ analysis: String) -> some View {
+    private func resultView(_ analysis: String, summary: StatsSummary) -> some View {
         HStack(spacing: 0) {
             // 左侧：装饰性渐变条
             RoundedRectangle(cornerRadius: 3)
@@ -258,7 +258,7 @@ struct CompactAIAnalysisView: View {
 
                 HStack(spacing: 8) {
                     Button(action: {
-                        Task { await aiManager.analyzeCurrentSession() }
+                        Task { await aiManager.analyzeNotifications(summary: summary) }
                     }) {
                         HStack(spacing: 3) {
                             Image(systemName: "arrow.clockwise")
