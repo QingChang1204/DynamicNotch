@@ -24,6 +24,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         NSApp.setActivationPolicy(.accessory)
 
+        // 创建标准编辑菜单以支持复制粘贴
+        setupEditMenu()
+
         isLaunchedAtLogin = LaunchAtLogin.wasLaunchedAtLogin
 
         _ = EventMonitors.shared
@@ -37,6 +40,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         self.timer = timer
 
         rebuildApplicationWindows()
+    }
+
+    private func setupEditMenu() {
+        // 创建主菜单栏
+        let mainMenu = NSMenu()
+
+        // 创建编辑菜单
+        let editMenu = NSMenu(title: "Edit")
+        let editMenuItem = NSMenuItem()
+        editMenuItem.submenu = editMenu
+
+        // 添加标准编辑操作
+        editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+
+        // 添加到主菜单
+        mainMenu.addItem(editMenuItem)
+
+        // 设置为应用菜单
+        NSApp.mainMenu = mainMenu
     }
 
     func applicationWillTerminate(_: Notification) {

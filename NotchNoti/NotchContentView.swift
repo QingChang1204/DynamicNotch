@@ -24,8 +24,8 @@ struct NotchContentView: View {
             } else {
                 switch vm.contentType {
                 case .normal:
-                    // 显示通知中心主界面
-                    NotificationCenterMainView()
+                    // 显示紧凑型通知中心
+                    CompactNotificationHistoryView()
                         .transition(AnyTransition.scale(scale: 0.8).combined(with: .opacity))
                 case .menu:
                     NotchMenuView(vm: vm)
@@ -34,11 +34,13 @@ struct NotchContentView: View {
                     NotchSettingsView(vm: vm)
                         .transition(AnyTransition.scale(scale: 0.8).combined(with: .opacity))
                 case .stats:
-                    NotchStatsView()
+                    CompactStatsView()
                         .transition(AnyTransition.scale(scale: 0.8).combined(with: .opacity))
                 case .history:
-                    // 历史页面直接使用通知中心主界面
-                    NotificationCenterMainView()
+                    CompactNotificationHistoryView()
+                        .transition(AnyTransition.scale(scale: 0.8).combined(with: .opacity))
+                case .aiAnalysis:
+                    CompactAIAnalysisView()
                         .transition(AnyTransition.scale(scale: 0.8).combined(with: .opacity))
                 }
             }

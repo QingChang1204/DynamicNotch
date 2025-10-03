@@ -6,5 +6,7 @@
 	<false/>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSPasteboardUsageDescription</key>
+	<string>NotchNoti需要访问剪贴板以便在AI设置中粘贴API密钥</string>
 </dict>
 </plist>

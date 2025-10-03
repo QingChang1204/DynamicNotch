@@ -411,47 +411,93 @@ struct NotificationHistoryView: View {
 struct NotificationCenterMainView: View {
     @ObservedObject var manager = NotificationManager.shared
     @State private var selectedNotification: NotchNotification?
-    
+
     var body: some View {
-        if manager.notificationHistory.isEmpty {
-            // 空状态界面
-            VStack(spacing: 8) {
+        VStack(spacing: 0) {
+            // 标题栏 - 和其他页面统一
+            HStack {
+                Text("🔔 通知历史")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white.opacity(0.8))
+
                 Spacer()
-                Image(systemName: "bell.slash")
-                    .font(.system(size: 32))
-                    .foregroundColor(.secondary.opacity(0.3))
-                
-                Text("暂无通知")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                Spacer()
+
+                if !manager.notificationHistory.isEmpty {
+                    Text("\(manager.notificationHistory.count) 条")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.5))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(4)
+
+                    Button(action: {
+                        manager.clearHistory()
+                    }) {
+                        Image(systemName: "trash")
+                            .font(.caption)
+                            .foregroundColor(.red.opacity(0.7))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+
+                Button(action: {
+                    NotchViewModel.shared?.contentType = .normal
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+                .buttonStyle(PlainButtonStyle())
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            // 直接显示可滑动的历史记录
-            ScrollView {
-                VStack(spacing: 6) {
-                    ForEach(manager.notificationHistory) { notification in
-                        NotificationHistoryItem(
-                            notification: notification,
-                            isSelected: selectedNotification?.id == notification.id
-                        )
-                        .onTapGesture {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                if selectedNotification?.id == notification.id {
-                                    selectedNotification = nil
-                                } else {
-                                    selectedNotification = notification
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            Divider().opacity(0.3)
+
+            // 内容区域
+            if manager.notificationHistory.isEmpty {
+                // 空状态界面
+                VStack(spacing: 8) {
+                    Spacer()
+                    Image(systemName: "bell.slash")
+                        .font(.system(size: 32))
+                        .foregroundColor(.secondary.opacity(0.3))
+
+                    Text("暂无通知")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                // 直接显示可滑动的历史记录
+                ScrollView {
+                    VStack(spacing: 6) {
+                        ForEach(manager.notificationHistory) { notification in
+                            NotificationHistoryItem(
+                                notification: notification,
+                                isSelected: selectedNotification?.id == notification.id
+                            )
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    if selectedNotification?.id == notification.id {
+                                        selectedNotification = nil
+                                    } else {
+                                        selectedNotification = notification
+                                    }
                                 }
                             }
                         }
                     }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
             }
-            .frame(maxHeight: 250)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.opacity(0.2))
     }
 }
 

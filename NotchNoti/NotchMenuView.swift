@@ -13,73 +13,92 @@ struct NotchMenuView: View {
     @ObservedObject var notificationManager = NotificationManager.shared
 
     var body: some View {
-        HStack(spacing: vm.spacing) {
+        HStack(spacing: vm.spacing * 1.5) {
             history
             stats
-            clearNotifications
-            settings
-            setupClaudeCode
-            close
+            aiAnalysis
+            moreMenu
         }
     }
 
-    var setupClaudeCode: some View {
+    // 新增：AI分析按钮
+    var aiAnalysis: some View {
         ColorButton(
-            color: ColorfulPreset.colorful.colors,
-            image: Image(systemName: "link.circle.fill"),
-            title: "配置Claude"
+            color: [.purple, .pink],
+            image: Image(systemName: "sparkles"),
+            title: "AI分析"
         )
         .onTapGesture {
-            // 配置Claude Code hooks
-            let result = ClaudeCodeSetup.shared.setupClaudeCodeHooks()
-            ClaudeCodeSetup.shared.showSetupResult(result)
-            if result.success {
+            vm.showAIAnalysis()
+        }
+        .clipShape(RoundedRectangle(cornerRadius: vm.cornerRadius))
+    }
+
+    // 新增：更多菜单
+    var moreMenu: some View {
+        Menu {
+            Button(action: {
+                vm.showSettings()
+            }) {
+                Label("偏好设置", systemImage: "gear")
+            }
+
+            Button(action: {
+                let result = ClaudeCodeSetup.shared.setupClaudeCodeHooks()
+                ClaudeCodeSetup.shared.showSetupResult(result)
+                if result.success {
+                    vm.notchClose()
+                }
+            }) {
+                Label("配置Claude Code", systemImage: "link.circle")
+            }
+
+            Divider()
+
+            Button(action: {
+                notificationManager.clearHistory()
                 vm.notchClose()
+            }) {
+                Label("清空历史", systemImage: "trash")
             }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: vm.cornerRadius))
-    }
 
-
-    var close: some View {
-        ColorButton(
-            color: [.red],
-            image: Image(systemName: "xmark"),
-            title: "Exit"
-        )
-        .onTapGesture {
-            vm.notchClose()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                NSApp.terminate(nil)
+            Button(action: {
+                StatisticsManager.shared.sessionHistory.removeAll()
+                StatisticsManager.shared.currentSession = nil
+                vm.notchClose()
+            }) {
+                Label("清空统计", systemImage: "chart.bar.xaxis")
             }
+
+            Divider()
+
+            Button(action: {
+                if let url = URL(string: "https://github.com/QingChang1204/DynamicNotch") {
+                    NSWorkspace.shared.open(url)
+                }
+            }) {
+                Label("关于NotchNoti", systemImage: "info.circle")
+            }
+
+            Button(action: {
+                vm.notchClose()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    NSApp.terminate(nil)
+                }
+            }) {
+                Label("退出应用", systemImage: "power")
+            }
+        } label: {
+            ColorButton(
+                color: [.gray, .secondary],
+                image: Image(systemName: "ellipsis"),
+                title: "菜单"
+            )
         }
+        .menuStyle(.borderlessButton)
         .clipShape(RoundedRectangle(cornerRadius: vm.cornerRadius))
     }
 
-    var clearNotifications: some View {
-        ColorButton(
-            color: [.orange],
-            image: Image(systemName: "bell.slash"),
-            title: "Clear"
-        )
-        .onTapGesture {
-            notificationManager.clearHistory()
-            vm.notchClose()
-        }
-        .clipShape(RoundedRectangle(cornerRadius: vm.cornerRadius))
-    }
-
-    var settings: some View {
-        ColorButton(
-            color: ColorfulPreset.colorful.colors,
-            image: Image(systemName: "gear"),
-            title: LocalizedStringKey("Settings")
-        )
-        .onTapGesture {
-            vm.showSettings()
-        }
-        .clipShape(RoundedRectangle(cornerRadius: vm.cornerRadius))
-    }
     
     var history: some View {
         ColorButton(

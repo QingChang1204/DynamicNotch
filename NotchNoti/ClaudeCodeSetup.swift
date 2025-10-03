@@ -26,7 +26,11 @@ class ClaudeCodeSetup {
     
     // 获取当前hook二进制文件路径
     private func getHookBinaryPath() -> String {
-        // 始终使用 /Applications 下的路径，而不是Xcode DerivedData
+        // 动态获取当前运行的app bundle路径
+        if let bundlePath = Bundle.main.bundlePath as String? {
+            return "\(bundlePath)/Contents/MacOS/notch-hook"
+        }
+        // 回退到默认路径
         return "/Applications/NotchNoti.app/Contents/MacOS/notch-hook"
     }
     

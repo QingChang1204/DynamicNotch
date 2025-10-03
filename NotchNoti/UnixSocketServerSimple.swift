@@ -10,15 +10,16 @@ import Foundation
 class UnixSocketServerSimple: ObservableObject {
     static let shared = UnixSocketServerSimple()
     
-    // 使用用户的临时目录，避免权限问题
+    // 沙盒环境下的 socket 路径
     private lazy var socketPath: String = {
-        let tmpDir = NSTemporaryDirectory() // 这会返回应用的临时目录
-        let socketFile = (tmpDir as NSString).appendingPathComponent("notch.sock")
-        
-        // 为了方便访问，创建一个符号链接到用户主目录
-        let homeSocketPath = NSHomeDirectory() + "/.notch.sock"
-        
-        return homeSocketPath
+        // 沙盒应用的 Data 目录
+        let homeDir = NSHomeDirectory()
+        let socketFile = (homeDir as NSString).appendingPathComponent(".notch.sock")
+
+        print("[UnixSocket] Socket will be created at: \(socketFile)")
+        print("[UnixSocket] This is inside sandbox container")
+
+        return socketFile
     }()
     private var serverSocket: Int32 = -1
     private var isListening = false

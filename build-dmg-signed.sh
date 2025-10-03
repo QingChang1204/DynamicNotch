@@ -106,6 +106,10 @@ if [ -n "${SIGN_IDENTITY}" ]; then
         echo "✅ 应用已由 Xcode 自动签名"
         EXISTING_IDENTITY=$(/usr/bin/codesign -dvvv "${APP_PATH}" 2>&1 | grep "Authority=" | head -1 | cut -d'=' -f2)
         echo "   签名者: ${EXISTING_IDENTITY}"
+
+        # 验证 entitlements 是否正确
+        echo "🔍 验证 entitlements..."
+        /usr/bin/codesign -d --entitlements - "${APP_PATH}" 2>&1 | head -20
     else
         echo "⚠️  应用未签名或签名无效，尝试手动签名..."
 
@@ -113,13 +117,15 @@ if [ -n "${SIGN_IDENTITY}" ]; then
         if [ -f "${APP_PATH}/Contents/MacOS/notch-hook" ]; then
             echo "  - 签名 notch-hook 二进制..."
             /usr/bin/codesign --force --sign "${SIGN_IDENTITY}" \
+                --options runtime \
                 "${APP_PATH}/Contents/MacOS/notch-hook" 2>&1 || echo "    (notch-hook 签名失败)"
         fi
 
-        # 然后签名整个 app bundle（深度签名）
+        # 然后签名整个 app bundle（不使用 --deep，避免破坏功能）
         echo "  - 签名 app bundle..."
-        /usr/bin/codesign --force --deep --sign "${SIGN_IDENTITY}" \
+        /usr/bin/codesign --force --sign "${SIGN_IDENTITY}" \
             --entitlements "${PROJECT_DIR}/NotchNoti/NotchNoti.entitlements" \
+            --options runtime \
             "${APP_PATH}" 2>&1
 
         if [ $? -eq 0 ]; then
