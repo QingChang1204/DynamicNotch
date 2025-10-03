@@ -1,0 +1,35 @@
+[package]
+name = "notch-hook"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "notch-hook"
+path = "src/main.rs"
+
+[[bin]]
+name = "notch-claude"
+path = "src/wrapper.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.11", features = ["json", "blocking"] }
+similar = { version = "2.3", features = ["text"] }
+chrono = "0.4"
+dirs = "5.0"
+sha2 = "0.10"
+hex = "0.4"
+anyhow = "1.0"
+clap = { version = "4.4", features = ["derive"] }
+uuid = { version = "1.6", features = ["v4"] }
+crossbeam = "0.8"
+portable-pty = "0.8"
+nix = { version = "0.29", features = ["process", "fs", "poll"] }
+termios = "0.3"
+term_size = "0.3"
+
+[profile.release]
+strip = true
+opt-level = 3
+lto = true
