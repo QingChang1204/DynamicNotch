@@ -141,6 +141,13 @@ class AIAnalysisManager: ObservableObject {
         // 生成通知统计摘要
         let notifSummary = generateNotificationSummary(summary)
 
+        // 检查是否有足够数据
+        if notifSummary.contains("【数据不足】") {
+            lastAnalysis = "数据不足：通知历史中缺少项目和文件信息，请使用 Claude Code 进行操作后重试"
+            isAnalyzing = false
+            return
+        }
+
         // 调用LLM
         do {
             let response = try await callLLM(
@@ -216,70 +223,136 @@ class AIAnalysisManager: ObservableObject {
         return summary
     }
 
-    // 生成通知统计摘要（优化版v2）
+    // 生成项目工作总结（基于通知历史和 diff 文件）
     private func generateNotificationSummary(_ summary: StatsSummary) -> String {
-        let elapsed = Date().timeIntervalSince(summary.startTime)
-        let hours = Int(elapsed / 3600)
-        let minutes = Int((elapsed.truncatingRemainder(dividingBy: 3600)) / 60)
+        let notifications = NotificationManager.shared.notificationHistory
+
+        // 按项目分组通知
+        var projectData: [String: ProjectAnalysis] = [:]
+
+        for notification in notifications {
+            guard let metadata = notification.metadata,
+                  let project = metadata["project"] else {
+                continue
+            }
+
+            if projectData[project] == nil {
+                projectData[project] = ProjectAnalysis(projectName: project)
+            }
+
+            // 收集 diff 路径
+            if let diffPath = metadata["diff_path"] {
+                projectData[project]?.diffPaths.append(diffPath)
+            }
+
+            // 收集文件路径
+            if let filePath = metadata["file_path"] {
+                let fileName = (filePath as NSString).lastPathComponent
+                if !fileName.isEmpty {
+                    projectData[project]?.modifiedFiles.insert(fileName)
+                }
+            }
+
+            // 收集操作类型
+            if let toolName = metadata["tool_name"] {
+                projectData[project]?.tools[toolName, default: 0] += 1
+            }
+        }
+
+        // 如果没有任何项目数据
+        if projectData.isEmpty {
+            return """
+            【数据不足】
+            通知历史中缺少项目信息。
+
+            建议：使用 Claude Code 进行操作后重新分析。
+            """
+        }
+
+        // 选择最活跃的项目（通知最多的）
+        guard let mainProject = projectData.max(by: { $0.value.diffPaths.count < $1.value.diffPaths.count })?.value else {
+            return "【数据不足】无法识别主要工作项目"
+        }
+
+        // 读取最近的 diff 内容
+        let diffs = loadRecentDiffs(for: mainProject.projectName, limit: 5)
 
         var text = """
-        【基础数据】
-        统计时长: \(hours)小时\(minutes)分钟
-        通知总数: \(summary.totalCount)条
-        通知频率: \(String(format: "%.1f", summary.avgPerHour))条/小时
-        工作节奏: \(summary.timeTrend)
+        【项目】\(mainProject.projectName)
+        【修改文件】\(mainProject.modifiedFiles.count) 个
         """
 
-        // TOP3 通知类型
-        if !summary.top3Types.isEmpty {
-            text += "\n\n【类型分布 TOP3】"
-            for (index, item) in summary.top3Types.enumerated() {
-                let percentage = Int(Double(item.count) / Double(summary.totalCount) * 100)
-                text += "\n\(index + 1). \(item.type.rawValue): \(item.count)条 (\(percentage)%)"
-            }
-        }
-
-        // 优先级分析
-        let ps = summary.priorityStats
-        let totalPriority = ps.urgent + ps.high + ps.normal + ps.low
-        if totalPriority > 0 {
-            text += "\n\n【优先级分布】"
-            if ps.urgent > 0 {
-                text += "\n紧急: \(ps.urgent)条 (\(Int(Double(ps.urgent) / Double(totalPriority) * 100))%)"
-            }
-            if ps.high > 0 {
-                text += "\n高: \(ps.high)条 (\(Int(Double(ps.high) / Double(totalPriority) * 100))%)"
-            }
-            text += "\n普通: \(ps.normal)条 (\(Int(Double(ps.normal) / Double(totalPriority) * 100))%)"
-            if ps.low > 0 {
-                text += "\n低: \(ps.low)条 (\(Int(Double(ps.low) / Double(totalPriority) * 100))%)"
-            }
-        }
-
-        // 时间段
-        if let activeTime = summary.activeTime {
-            text += "\n\n【时间特征】"
-            text += "\n最活跃时段: \(activeTime.slot.rawValue) (\(activeTime.count)条)"
-        }
-
-        // 工具使用 TOP3
-        if !summary.topTools.isEmpty {
-            text += "\n\n【工具使用 TOP3】"
-            for (index, item) in summary.topTools.enumerated() {
-                text += "\n\(index + 1). \(item.tool): \(item.count)次"
-            }
-        }
-
-        // 操作分类
-        if !summary.actionSummary.isEmpty {
-            text += "\n\n【操作分类】"
-            for item in summary.actionSummary {
-                let percentage = Int(Double(item.count) / Double(summary.totalCount) * 100)
-                text += "\n\(item.action): \(item.count)次 (\(percentage)%)"
+        if !diffs.isEmpty {
+            text += "\n\n【最近变更】"
+            for (index, diff) in diffs.enumerated() {
+                let preview = diff.content.prefix(200)
+                text += "\n\n\(index + 1). \(diff.fileName)"
+                text += "\n+\(diff.stats.added) -\(diff.stats.removed)"
+                text += "\n```\n\(preview)\n```"
             }
         }
 
         return text
+    }
+
+    // 项目分析数据结构
+    private struct ProjectAnalysis {
+        let projectName: String
+        var diffPaths: [String] = []
+        var modifiedFiles: Set<String> = []
+        var tools: [String: Int] = [:]
+    }
+
+    // Diff 数据结构
+    private struct DiffInfo {
+        let fileName: String
+        let content: String
+        let stats: DiffStats
+    }
+
+    private struct DiffStats: Codable {
+        let added: Int
+        let removed: Int
+        let file: String
+    }
+
+    // 加载最近的 diff 文件
+    private func loadRecentDiffs(for projectName: String, limit: Int) -> [DiffInfo] {
+        let diffDir = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("NotchNoti/diffs/\(projectName)")
+
+        guard let files = try? FileManager.default.contentsOfDirectory(at: diffDir, includingPropertiesForKeys: [.creationDateKey], options: .skipsHiddenFiles) else {
+            return []
+        }
+
+        // 只读取 .preview.diff 文件
+        let diffFiles = files
+            .filter { $0.lastPathComponent.hasSuffix(".preview.diff") }
+            .sorted { (lhs, rhs) in
+                let lhsDate = (try? lhs.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? Date.distantPast
+                let rhsDate = (try? rhs.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? Date.distantPast
+                return lhsDate > rhsDate
+            }
+            .prefix(limit)
+
+        var results: [DiffInfo] = []
+        for diffFile in diffFiles {
+            guard let content = try? String(contentsOf: diffFile, encoding: .utf8) else { continue }
+
+            // 读取对应的 stats 文件
+            let statsFile = diffFile.deletingPathExtension().appendingPathExtension("stats.json")
+            var stats = DiffStats(added: 0, removed: 0, file: "")
+            if let statsData = try? Data(contentsOf: statsFile),
+               let decoded = try? JSONDecoder().decode(DiffStats.self, from: statsData) {
+                stats = decoded
+            }
+
+            let fileName = (stats.file as NSString).lastPathComponent
+            results.append(DiffInfo(fileName: fileName, content: content, stats: stats))
+        }
+
+        return results
     }
 
     // 构建分析Prompt（优化版v1 - 2025-10-03）
@@ -309,54 +382,26 @@ class AIAnalysisManager: ObservableObject {
         """
     }
 
-    // 构建通知分析Prompt（优化版v3 - 2025-10-03 - 专业化）
+    // 构建项目工作总结Prompt（基于代码 diff）
     private func buildNotificationAnalysisPrompt(_ summary: String) -> String {
         """
-        你是资深开发效率教练，擅长从具体工具使用数据中识别工作模式并给出针对性建议。
+        你是代码审查助手，根据代码变更总结开发者完成了什么工作。
 
         \(summary)
 
-        【分析任务】
-        基于上述数据，生成一条专业洞察（40-60字）。
+        任务：用一句话（30-50字）总结完成的功能或修复的问题。
 
-        【分析要点】
-        1. **工具使用模式**: 关注具体工具频率（Edit/Bash/Task/Read/Grep等）
-           - Edit/Write 主导 → 代码编辑为主
-           - Bash 频繁 → 命令执行/自动化测试
-           - Task 出现 → Agent任务/复杂操作
-           - Read/Grep 为主 → 代码审查/信息查询
+        要求：
+        1. 根据代码变更内容推断功能，而非只看文件名
+        2. 提及关键技术点或模块名
+        3. 说明是新功能、bug修复、还是重构
 
-        2. **操作类型识别**: 根据操作分类判断工作阶段
-           - 文件修改 >60% → 代码迭代阶段
-           - 命令执行 >40% → 测试/构建阶段
-           - 代码查询 >50% → 学习/审查阶段
+        示例：
+        - 重构统计系统，用 WorkSession 替代 SessionStats，简化数据模型
+        - 修复 socket 通信问题，改用沙盒路径解决跨用户访问
+        - 实现 AI 分析功能，集成 LLM 并添加 diff 读取能力
 
-        3. **问题识别**: 根据错误率和优先级给出建议
-           - Error类型 >30% → 需要排查问题
-           - 紧急优先级 >20% → 处于应急模式
-
-        【输出格式】
-        [关键词]：具体洞察 + 建议
-
-        关键词示例: 高频编辑 | 命令密集 | 混合开发 | 问题排查 | 信息检索
-
-        【输出要求】
-        ✅ 提及具体工具名称（如"Edit工具占65%"）
-        ✅ 根据操作分类给出判断（如"文件修改为主，处于迭代阶段"）
-        ✅ 给出可执行建议（如"建议完成后进行代码审查"）
-        ✅ 专业务实，避免空话
-        ❌ 禁止使用emoji表情符号
-        ❌ 禁止重复数据（如"通知总数XX条"）
-        ❌ 禁止空泛建议（如"继续保持"、"很好"）
-
-        【示例输出】
-        ✅ 高频编辑：Edit工具占65%，文件修改为主，当前处于代码迭代阶段，建议完成后进行代码审查
-        ✅ 命令密集：Bash执行占40%且错误率低，自动化脚本运行顺畅，可考虑集成CI/CD流程
-        ✅ 问题排查：Error类型占35%，Task任务频繁出现，建议优先处理高优先级错误后再开展新功能
-        ✅ 混合开发：Read/Edit各占30%，代码查询与修改并重，处于学习新代码并迭代阶段
-        ❌ 工作正常，通知频率稳定，建议继续保持
-
-        直接输出你的分析（一行，40-60字）：
+        直接输出总结：
         """
     }
 
