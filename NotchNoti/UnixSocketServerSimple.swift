@@ -203,40 +203,18 @@ class UnixSocketServerSimple: ObservableObject {
 
         switch eventType {
         case "session_start":
-            if let sessionId = metadata["session_id"],
-               let projectName = metadata["project"] {
-                StatisticsManager.shared.startSession(sessionId: sessionId, projectName: projectName)
+            if let projectName = metadata["project"] {
+                StatisticsManager.shared.startSession(projectName: projectName)
             }
 
-        case "tool_success", "tool_complete":
-            if let toolName = metadata["tool_name"],
-               let durationStr = metadata["duration"],
-               let duration = TimeInterval(durationStr) {
-                StatisticsManager.shared.recordToolUse(toolName: toolName, success: true, duration: duration)
-            }
-
-        case "tool_error":
+        case "tool_use", "tool_success", "tool_complete":
             if let toolName = metadata["tool_name"] {
-                let errorMessage = metadata["error_message"] ?? "Unknown error"
-                let context = metadata["context"]
-
-                // 记录错误
-                let error = ErrorRecord(
-                    toolName: toolName,
-                    errorMessage: errorMessage,
-                    context: context,
-                    metadata: metadata
-                )
-                StatisticsManager.shared.recordError(error)
-
-                // 记录工具使用（失败）
-                if let durationStr = metadata["duration"],
-                   let duration = TimeInterval(durationStr) {
-                    StatisticsManager.shared.recordToolUse(toolName: toolName, success: false, duration: duration)
-                } else {
-                    StatisticsManager.shared.recordToolUse(toolName: toolName, success: false, duration: 0)
-                }
+                let duration = metadata["duration"].flatMap { TimeInterval($0) } ?? 0
+                StatisticsManager.shared.recordActivity(toolName: toolName, duration: duration)
             }
+
+        case "session_end":
+            StatisticsManager.shared.endSession()
 
         default:
             break

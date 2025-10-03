@@ -160,20 +160,25 @@ struct NotificationAction: Codable, Identifiable, Equatable {
 
 class NotificationManager: ObservableObject {
     static let shared = NotificationManager()
-    
+
     @Published var notifications: [NotchNotification] = []
     @Published var currentNotification: NotchNotification?
     @Published var showNotification: Bool = false
-    @Published var notificationHistory: [NotchNotification] = []
+    @Published var notificationHistory: [NotchNotification] = []  // 内存层：UI显示用的热数据（50条）
     @Published var pendingNotifications: [NotchNotification] = []  // 通知队列
     @Published var mergedCount: Int = 0  // 合并的通知数量
-    
-    private let maxHistoryCount = 50  // 减少历史记录以提升性能
+
+    // 双层存储配置
+    private let maxHistoryCount = 50  // 内存层：UI显示的最大数量（避免卡顿）
+    private let maxPersistentCount = 1000  // 持久层：完整历史记录数量（用于统计分析）
     private let maxQueueSize = 10  // 最大队列长度
     private var displayDuration: TimeInterval = 1.0  // 基础显示时间
     private weak var hideTimer: Timer?  // 使用 weak 避免循环引用
     private weak var closeTimer: Timer?
     private let timerQueue = DispatchQueue(label: "com.notchdrop.timer", qos: .userInteractive)
+
+    // 持久层存储键
+    private let persistentStorageKey = "com.notchnoti.fullHistory"
     
     // 通知合并时间窗口
     private let mergeTimeWindow: TimeInterval = 0.5
@@ -352,14 +357,87 @@ class NotificationManager: ObservableObject {
     }
     
     private func addToHistory(_ notification: NotchNotification) {
-        // LRU缓存策略：移除重复项，添加到最前
+        // 内存层：LRU缓存策略（UI显示用，50条）
         notificationHistory.removeAll { $0.id == notification.id }
         notificationHistory.insert(notification, at: 0)
-        
-        // 限制历史记录大小
+
+        // 限制内存历史记录大小（避免UI卡顿）
         if notificationHistory.count > maxHistoryCount {
             notificationHistory.removeLast()
         }
+
+        // 持久层：完整历史记录（统计分析用，1000条）
+        saveToPersistentStorage(notification)
+    }
+
+    // 保存到持久层存储
+    private func saveToPersistentStorage(_ notification: NotchNotification) {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self else { return }
+
+            var fullHistory = self.loadFullHistory()
+
+            // 添加新通知到持久层
+            fullHistory.removeAll { $0.id == notification.id }
+            fullHistory.insert(notification, at: 0)
+
+            // 限制持久层大小（1000条）
+            if fullHistory.count > self.maxPersistentCount {
+                fullHistory = Array(fullHistory.prefix(self.maxPersistentCount))
+            }
+
+            // 保存到 UserDefaults
+            if let encoded = try? JSONEncoder().encode(fullHistory) {
+                UserDefaults.standard.set(encoded, forKey: self.persistentStorageKey)
+            }
+        }
+    }
+
+    // 从持久层加载完整历史
+    func loadFullHistory() -> [NotchNotification] {
+        guard let data = UserDefaults.standard.data(forKey: persistentStorageKey),
+              let history = try? JSONDecoder().decode([NotchNotification].self, from: data) else {
+            return []
+        }
+        return history
+    }
+
+    // 获取完整历史记录（用于统计分析）
+    func getFullHistoryForAnalysis() -> [NotchNotification] {
+        return loadFullHistory()
+    }
+
+    // 获取过滤后的历史记录（支持日期范围、类型过滤等）
+    func getFilteredHistory(
+        startDate: Date? = nil,
+        endDate: Date? = nil,
+        types: [NotchNotification.NotificationType]? = nil,
+        priorities: [NotchNotification.Priority]? = nil
+    ) -> [NotchNotification] {
+        var history = loadFullHistory()
+
+        if let start = startDate {
+            history = history.filter { $0.timestamp >= start }
+        }
+
+        if let end = endDate {
+            history = history.filter { $0.timestamp <= end }
+        }
+
+        if let filterTypes = types {
+            history = history.filter { filterTypes.contains($0.type) }
+        }
+
+        if let filterPriorities = priorities {
+            history = history.filter { filterPriorities.contains($0.priority) }
+        }
+
+        return history
+    }
+
+    // 清除持久层历史记录
+    func clearPersistentHistory() {
+        UserDefaults.standard.removeObject(forKey: persistentStorageKey)
     }
     
     private func invalidateTimers() {

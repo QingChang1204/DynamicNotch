@@ -2,116 +2,138 @@
 //  Statistics.swift
 //  NotchNoti
 //
-//  统计功能完整实现 - 包含数据模型、管理器和视图
+//  工作效率统计 - 专注于Claude Code协作模式分析
 //
 
 import Foundation
 import SwiftUI
 
-// MARK: - 数据模型
+// MARK: - 核心统计模型
 
-struct SessionStats: Codable, Identifiable {
+/// 工作会话统计
+struct WorkSession: Codable, Identifiable {
     let id: UUID
-    let sessionId: String
     let projectName: String
     let startTime: Date
     var endTime: Date?
-    var toolUsage: [String: ToolStats]
-    var totalOperations: Int
-    var errorCount: Int
-    var errors: [ErrorRecord]
+    var activities: [Activity]
 
-    init(sessionId: String, projectName: String) {
+    init(projectName: String) {
         self.id = UUID()
-        self.sessionId = sessionId
         self.projectName = projectName
         self.startTime = Date()
         self.endTime = nil
-        self.toolUsage = [:]
-        self.totalOperations = 0
-        self.errorCount = 0
-        self.errors = []
+        self.activities = []
     }
 
+    // 核心指标
     var duration: TimeInterval {
         (endTime ?? Date()).timeIntervalSince(startTime)
     }
 
-    var successRate: Double {
-        guard totalOperations > 0 else { return 0 }
-        return Double(totalOperations - errorCount) / Double(totalOperations)
+    var totalActivities: Int {
+        activities.count
     }
 
-    var topTools: [(String, ToolStats)] {
-        toolUsage.sorted { $0.value.count > $1.value.count }.prefix(5).map { ($0.key, $0.value) }
+    // 工作节奏（每分钟操作数）
+    var pace: Double {
+        guard duration > 0 else { return 0 }
+        return Double(totalActivities) / (duration / 60.0)
+    }
+
+    // 工作强度
+    var intensity: Intensity {
+        if pace > 8 { return .intense }      // 高强度：每分钟8+操作
+        if pace > 4 { return .focused }      // 专注：每分钟4-8操作
+        if pace > 1 { return .steady }       // 稳定：每分钟1-4操作
+        return .light                         // 轻度：每分钟<1操作
+    }
+
+    enum Intensity: String, Codable {
+        case light = "💤 轻度"
+        case steady = "🚶 稳定"
+        case focused = "🎯 专注"
+        case intense = "🔥 高强度"
+    }
+
+    // 活动类型分布
+    var activityDistribution: [ActivityType: Int] {
+        Dictionary(grouping: activities, by: \.type)
+            .mapValues { $0.count }
+    }
+
+    // 主要工作类型
+    var primaryActivity: ActivityType {
+        activityDistribution.max(by: { $0.value < $1.value })?.key ?? .other
+    }
+
+    // 工作模式判断
+    var workMode: WorkMode {
+        let dist = activityDistribution
+        let writeOps = (dist[.edit] ?? 0) + (dist[.write] ?? 0)
+        let readOps = (dist[.read] ?? 0) + (dist[.grep] ?? 0) + (dist[.glob] ?? 0)
+        let execOps = dist[.bash] ?? 0
+
+        if writeOps > readOps && writeOps > execOps {
+            return .writing  // 编写代码为主
+        } else if readOps > writeOps * 2 {
+            return .researching  // 阅读研究为主
+        } else if execOps > totalActivities / 3 {
+            return .debugging  // 调试执行为主
+        } else if writeOps > 0 && readOps > 0 {
+            return .developing  // 混合开发
+        }
+        return .exploring  // 探索阶段
+    }
+
+    enum WorkMode: String {
+        case writing = "✍️ 编写"
+        case researching = "🔍 研究"
+        case debugging = "🐛 调试"
+        case developing = "💻 开发"
+        case exploring = "🗺️ 探索"
     }
 }
 
-struct ToolStats: Codable {
-    var count: Int
-    var successCount: Int
-    var failureCount: Int
-    var totalDuration: TimeInterval
-    var minDuration: TimeInterval
-    var maxDuration: TimeInterval
-
-    init() {
-        self.count = 0
-        self.successCount = 0
-        self.failureCount = 0
-        self.totalDuration = 0
-        self.minDuration = .infinity
-        self.maxDuration = 0
-    }
-
-    var averageDuration: TimeInterval {
-        guard count > 0 else { return 0 }
-        return totalDuration / Double(count)
-    }
-
-    var successRate: Double {
-        guard count > 0 else { return 0 }
-        return Double(successCount) / Double(count)
-    }
-
-    mutating func recordSuccess(duration: TimeInterval) {
-        count += 1
-        successCount += 1
-        totalDuration += duration
-        minDuration = min(minDuration, duration)
-        maxDuration = max(maxDuration, duration)
-    }
-
-    mutating func recordFailure(duration: TimeInterval) {
-        count += 1
-        failureCount += 1
-        totalDuration += duration
-        minDuration = min(minDuration, duration)
-        maxDuration = max(maxDuration, duration)
-    }
-}
-
-struct ErrorRecord: Codable, Identifiable {
+/// 单个活动记录
+struct Activity: Codable, Identifiable {
     let id: UUID
     let timestamp: Date
-    let toolName: String
-    let errorMessage: String
-    let context: String?
-    let metadata: [String: String]?
+    let type: ActivityType
+    let tool: String
+    let duration: TimeInterval
 
-    init(toolName: String, errorMessage: String, context: String? = nil, metadata: [String: String]? = nil) {
+    init(type: ActivityType, tool: String, duration: TimeInterval = 0) {
         self.id = UUID()
         self.timestamp = Date()
-        self.toolName = toolName
-        self.errorMessage = errorMessage
-        self.context = context
-        self.metadata = metadata
+        self.type = type
+        self.tool = tool
+        self.duration = duration
     }
+}
 
-    var formattedTime: String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .medium
-        return formatter.string(from: timestamp)
+/// 活动类型
+enum ActivityType: String, Codable, CaseIterable {
+    case read = "📖 阅读"
+    case write = "📝 写入"
+    case edit = "✏️ 编辑"
+    case bash = "⚡️ 执行"
+    case grep = "🔎 搜索"
+    case glob = "📁 查找"
+    case task = "🎯 任务"
+    case other = "📋 其他"
+
+    static func from(toolName: String) -> ActivityType {
+        switch toolName.lowercased() {
+        case "read": return .read
+        case "write": return .write
+        case "edit": return .edit
+        case "bash": return .bash
+        case "grep": return .grep
+        case "glob": return .glob
+        case "task": return .task
+        default: return .other
+        }
     }
 }
 
@@ -120,57 +142,43 @@ struct ErrorRecord: Codable, Identifiable {
 class StatisticsManager: ObservableObject {
     static let shared = StatisticsManager()
 
-    @Published var currentSession: SessionStats?
-    @Published var sessionHistory: [SessionStats] = []
-    @Published var showStats: Bool = false
+    @Published var currentSession: WorkSession?
+    @Published var sessionHistory: [WorkSession] = []
 
     private let maxHistoryCount = 20
-    private let persistenceKey = "com.notchnoti.sessionStats"
+    private let persistenceKey = "com.notchnoti.workSessions"
 
     private init() {
         loadHistory()
     }
 
-    func startSession(sessionId: String, projectName: String) {
-        print("[StatisticsManager] 开始新会话: \(projectName)")
-        if var current = currentSession {
-            current.endTime = Date()
-            addToHistory(current)
-        }
-        currentSession = SessionStats(sessionId: sessionId, projectName: projectName)
+    // 开始新会话
+    func startSession(projectName: String) {
+        endSession()  // 结束当前会话
+        currentSession = WorkSession(projectName: projectName)
+        print("[Stats] 新会话开始: \(projectName)")
     }
 
+    // 结束会话
     func endSession() {
-        guard var current = currentSession else { return }
-        print("[StatisticsManager] 结束会话: \(current.projectName)")
-        current.endTime = Date()
-        addToHistory(current)
+        guard var session = currentSession else { return }
+        session.endTime = Date()
+        addToHistory(session)
         currentSession = nil
+        print("[Stats] 会话结束: \(session.projectName), 时长: \(Int(session.duration/60))分钟")
     }
 
-    func recordToolUse(toolName: String, success: Bool, duration: TimeInterval) {
-        guard var current = currentSession else { return }
-        current.totalOperations += 1
-        var stats = current.toolUsage[toolName] ?? ToolStats()
-        if success {
-            stats.recordSuccess(duration: duration)
-        } else {
-            stats.recordFailure(duration: duration)
-            current.errorCount += 1
-        }
-        current.toolUsage[toolName] = stats
-        currentSession = current
-        print("[StatisticsManager] 记录工具使用: \(toolName), 成功: \(success), 耗时: \(String(format: "%.2f", duration))s")
+    // 记录活动
+    func recordActivity(toolName: String, duration: TimeInterval = 0) {
+        guard var session = currentSession else { return }
+        let type = ActivityType.from(toolName: toolName)
+        let activity = Activity(type: type, tool: toolName, duration: duration)
+        session.activities.append(activity)
+        currentSession = session
     }
 
-    func recordError(_ error: ErrorRecord) {
-        guard var current = currentSession else { return }
-        current.errors.append(error)
-        currentSession = current
-        print("[StatisticsManager] 记录错误: \(error.toolName) - \(error.errorMessage)")
-    }
-
-    private func addToHistory(_ session: SessionStats) {
+    // 保存历史
+    private func addToHistory(_ session: WorkSession) {
         sessionHistory.insert(session, at: 0)
         if sessionHistory.count > maxHistoryCount {
             sessionHistory.removeLast()
@@ -186,38 +194,143 @@ class StatisticsManager: ObservableObject {
 
     private func loadHistory() {
         guard let data = UserDefaults.standard.data(forKey: persistenceKey),
-              let decoded = try? JSONDecoder().decode([SessionStats].self, from: data) else {
+              let decoded = try? JSONDecoder().decode([WorkSession].self, from: data) else {
             return
         }
         sessionHistory = decoded
     }
 
-    func getTodayStats() -> [SessionStats] {
+    // MARK: - 统计分析
+
+    /// 今日工作总结
+    func getTodaySummary() -> DailySummary {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-        return sessionHistory.filter { session in
-            calendar.isDate(session.startTime, inSameDayAs: today)
+        let todaySessions = sessionHistory.filter {
+            calendar.isDate($0.startTime, inSameDayAs: today)
         }
-    }
 
-    func getTotalToolUsage() -> [String: Int] {
-        var usage: [String: Int] = [:]
-        for session in sessionHistory {
-            for (tool, stats) in session.toolUsage {
-                usage[tool, default: 0] += stats.count
+        let totalDuration = todaySessions.reduce(0.0) { $0 + $1.duration }
+        let totalActivities = todaySessions.reduce(0) { $0 + $1.totalActivities }
+        let avgPace = todaySessions.isEmpty ? 0 : todaySessions.reduce(0.0) { $0 + $1.pace } / Double(todaySessions.count)
+
+        // 合并所有活动类型
+        var allActivities: [ActivityType: Int] = [:]
+        for session in todaySessions {
+            for (type, count) in session.activityDistribution {
+                allActivities[type, default: 0] += count
             }
         }
-        return usage
+
+        return DailySummary(
+            date: today,
+            sessionCount: todaySessions.count,
+            totalDuration: totalDuration,
+            totalActivities: totalActivities,
+            averagePace: avgPace,
+            activityDistribution: allActivities,
+            sessions: todaySessions
+        )
     }
 
-    func getAverageSuccessRate() -> Double {
-        guard !sessionHistory.isEmpty else { return 0 }
-        let totalRate = sessionHistory.reduce(0.0) { $0 + $1.successRate }
-        return totalRate / Double(sessionHistory.count)
+    /// 最近7天趋势
+    func getWeeklyTrend() -> [DailySummary] {
+        let calendar = Calendar.current
+        var summaries: [DailySummary] = []
+
+        for dayOffset in 0..<7 {
+            guard let date = calendar.date(byAdding: .day, value: -dayOffset, to: Date()) else { continue }
+            let startOfDay = calendar.startOfDay(for: date)
+
+            let daySessions = sessionHistory.filter {
+                calendar.isDate($0.startTime, inSameDayAs: startOfDay)
+            }
+
+            let totalDuration = daySessions.reduce(0.0) { $0 + $1.duration }
+            let totalActivities = daySessions.reduce(0) { $0 + $1.totalActivities }
+            let avgPace = daySessions.isEmpty ? 0 : daySessions.reduce(0.0) { $0 + $1.pace } / Double(daySessions.count)
+
+            var allActivities: [ActivityType: Int] = [:]
+            for session in daySessions {
+                for (type, count) in session.activityDistribution {
+                    allActivities[type, default: 0] += count
+                }
+            }
+
+            summaries.append(DailySummary(
+                date: startOfDay,
+                sessionCount: daySessions.count,
+                totalDuration: totalDuration,
+                totalActivities: totalActivities,
+                averagePace: avgPace,
+                activityDistribution: allActivities,
+                sessions: daySessions
+            ))
+        }
+
+        return summaries.reversed()
+    }
+
+    /// 获取项目统计
+    func getProjectStats() -> [ProjectSummary] {
+        var projectMap: [String: [WorkSession]] = [:]
+
+        for session in sessionHistory {
+            projectMap[session.projectName, default: []].append(session)
+        }
+
+        return projectMap.map { (name, sessions) in
+            let totalDuration = sessions.reduce(0.0) { $0 + $1.duration }
+            let totalActivities = sessions.reduce(0) { $0 + $1.totalActivities }
+
+            return ProjectSummary(
+                projectName: name,
+                sessionCount: sessions.count,
+                totalDuration: totalDuration,
+                totalActivities: totalActivities,
+                lastActive: sessions.map(\.startTime).max() ?? Date()
+            )
+        }.sorted { $0.lastActive > $1.lastActive }
     }
 }
 
-// MARK: - UI 视图 (优化刘海显示)
+// MARK: - 汇总数据模型
+
+struct DailySummary: Identifiable {
+    let id = UUID()
+    let date: Date
+    let sessionCount: Int
+    let totalDuration: TimeInterval
+    let totalActivities: Int
+    let averagePace: Double
+    let activityDistribution: [ActivityType: Int]
+    let sessions: [WorkSession]
+
+    var dateString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM/dd"
+        return formatter.string(from: date)
+    }
+
+    var durationHours: Double {
+        totalDuration / 3600.0
+    }
+}
+
+struct ProjectSummary: Identifiable {
+    let id = UUID()
+    let projectName: String
+    let sessionCount: Int
+    let totalDuration: TimeInterval
+    let totalActivities: Int
+    let lastActive: Date
+
+    var durationHours: Double {
+        totalDuration / 3600.0
+    }
+}
+
+// MARK: - 紧凑型统计视图
 
 struct NotchStatsView: View {
     @ObservedObject var statsManager = StatisticsManager.shared
@@ -229,17 +342,16 @@ struct NotchStatsView: View {
             HStack {
                 // 页面指示器
                 HStack(spacing: 4) {
-                    Circle()
-                        .fill(currentPage == 0 ? Color.cyan : Color.white.opacity(0.3))
-                        .frame(width: 6, height: 6)
-                    Circle()
-                        .fill(currentPage == 1 ? Color.red : Color.white.opacity(0.3))
-                        .frame(width: 6, height: 6)
+                    ForEach(0..<3) { index in
+                        Circle()
+                            .fill(currentPage == index ? Color.cyan : Color.white.opacity(0.3))
+                            .frame(width: 6, height: 6)
+                    }
                 }
 
                 Spacer()
 
-                Text(currentPage == 0 ? "📊 会话统计" : "❌ 错误记录")
+                Text(pageTitle)
                     .font(.caption)
                     .foregroundColor(.white.opacity(0.8))
 
@@ -248,7 +360,7 @@ struct NotchStatsView: View {
                 // 切换和关闭按钮
                 HStack(spacing: 8) {
                     Button(action: {
-                        withAnimation { currentPage = (currentPage + 1) % 2 }
+                        withAnimation { currentPage = (currentPage + 1) % 3 }
                     }) {
                         Image(systemName: "arrow.left.arrow.right")
                             .font(.caption)
@@ -271,16 +383,22 @@ struct NotchStatsView: View {
 
             Divider().opacity(0.3)
 
-            // 内容区域 - 手动切换页面
+            // 内容区域
             ZStack {
                 if currentPage == 0 {
-                    CompactStatsView(session: statsManager.currentSession)
+                    CurrentSessionView(session: statsManager.currentSession)
                         .transition(.asymmetric(
                             insertion: .move(edge: .leading).combined(with: .opacity),
                             removal: .move(edge: .trailing).combined(with: .opacity)
                         ))
+                } else if currentPage == 1 {
+                    TodayOverviewView()
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .trailing).combined(with: .opacity),
+                            removal: .move(edge: .leading).combined(with: .opacity)
+                        ))
                 } else {
-                    CompactErrorView(session: statsManager.currentSession)
+                    WeeklyTrendView()
                         .transition(.asymmetric(
                             insertion: .move(edge: .trailing).combined(with: .opacity),
                             removal: .move(edge: .leading).combined(with: .opacity)
@@ -292,16 +410,26 @@ struct NotchStatsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.opacity(0.2))
     }
+
+    private var pageTitle: String {
+        switch currentPage {
+        case 0: return "🎯 当前会话"
+        case 1: return "📊 今日总结"
+        case 2: return "📈 本周趋势"
+        default: return ""
+        }
+    }
 }
 
-// 紧凑型统计视图 - 专为刘海显示优化
-struct CompactStatsView: View {
-    let session: SessionStats?
+// MARK: - 当前会话视图
+
+struct CurrentSessionView: View {
+    let session: WorkSession?
 
     var body: some View {
         if let session = session {
             HStack(spacing: 12) {
-                // 左侧: 关键指标
+                // 左侧：核心指标
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
                         Text("⏱️")
@@ -313,19 +441,17 @@ struct CompactStatsView: View {
                     }
 
                     HStack(spacing: 6) {
-                        Text("🔧")
+                        Text("🎯")
                             .font(.caption2)
-                        Text("\(session.totalOperations) 次")
+                        Text("\(session.totalActivities) 次")
                             .font(.caption)
                             .foregroundColor(.white.opacity(0.9))
                     }
 
                     HStack(spacing: 6) {
-                        Text("✅")
-                            .font(.caption2)
-                        Text(String(format: "%.0f%%", session.successRate * 100))
+                        Text(session.intensity.rawValue)
                             .font(.caption)
-                            .foregroundColor(session.successRate > 0.8 ? .green : .orange)
+                            .foregroundColor(.orange)
                     }
                 }
                 .frame(width: 120, alignment: .leading)
@@ -334,49 +460,36 @@ struct CompactStatsView: View {
                     .frame(height: 80)
                     .opacity(0.3)
 
-                // 右侧: TOP3 工具
-                if !session.topTools.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("TOP 工具")
-                            .font(.caption2)
-                            .foregroundColor(.white.opacity(0.5))
+                // 右侧：工作模式
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("工作模式")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.5))
 
-                        ForEach(session.topTools.prefix(3), id: \.0) { tool, stats in
-                            HStack(spacing: 4) {
-                                Text(tool)
-                                    .font(.caption2)
-                                    .foregroundColor(.white.opacity(0.8))
-                                    .lineLimit(1)
-
-                                Spacer()
-
-                                Text("\(stats.count)")
-                                    .font(.caption2)
-                                    .foregroundColor(.cyan)
-
-                                // 成功率指示器
-                                Circle()
-                                    .fill(stats.successRate > 0.8 ? Color.green : Color.orange)
-                                    .frame(width: 4, height: 4)
-                            }
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                } else {
-                    Text("暂无工具使用")
+                    Text(session.workMode.rawValue)
                         .font(.caption)
-                        .foregroundColor(.gray)
-                        .frame(maxWidth: .infinity)
+                        .fontWeight(.medium)
+                        .foregroundColor(.cyan)
+
+                    Text("节奏")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.5))
+                        .padding(.top, 4)
+
+                    Text(String(format: "%.1f/min", session.pace))
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.8))
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         } else {
             VStack(spacing: 8) {
-                Image(systemName: "chart.bar.xaxis")
+                Image(systemName: "clock.badge.questionmark")
                     .font(.system(size: 32))
                     .foregroundColor(.gray.opacity(0.5))
-                Text("暂无会话数据")
+                Text("暂无会话")
                     .font(.caption)
                     .foregroundColor(.gray)
             }
@@ -391,53 +504,79 @@ struct CompactStatsView: View {
     }
 }
 
-// 紧凑型错误视图 - 专为刘海显示优化
-struct CompactErrorView: View {
-    let session: SessionStats?
+// MARK: - 今日概览视图
+
+struct TodayOverviewView: View {
+    @ObservedObject var statsManager = StatisticsManager.shared
 
     var body: some View {
-        if let errors = session?.errors, !errors.isEmpty {
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 6) {
-                    ForEach(errors.prefix(3)) { error in
-                        HStack(alignment: .top, spacing: 8) {
-                            Text("❌")
-                                .font(.caption2)
+        let summary = statsManager.getTodaySummary()
 
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack {
-                                    Text(error.toolName)
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.red.opacity(0.9))
+        if summary.sessionCount > 0 {
+            HStack(spacing: 12) {
+                // 左侧：时间和会话数
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Text("⏰")
+                            .font(.caption2)
+                        Text(String(format: "%.1fh", summary.durationHours))
+                            .font(.system(.body, design: .rounded))
+                            .fontWeight(.semibold)
+                            .foregroundColor(.green)
+                    }
 
-                                    Spacer()
+                    HStack(spacing: 6) {
+                        Text("📝")
+                            .font(.caption2)
+                        Text("\(summary.sessionCount) 会话")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.9))
+                    }
 
-                                    Text(error.formattedTime)
-                                        .font(.caption2)
-                                        .foregroundColor(.white.opacity(0.4))
-                                }
-
-                                Text(error.errorMessage)
-                                    .font(.caption2)
-                                    .foregroundColor(.white.opacity(0.6))
-                                    .lineLimit(2)
-                            }
-                        }
-                        .padding(8)
-                        .background(Color.red.opacity(0.08))
-                        .cornerRadius(6)
+                    HStack(spacing: 6) {
+                        Text("⚡️")
+                            .font(.caption2)
+                        Text("\(summary.totalActivities) 操作")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.9))
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .frame(width: 120, alignment: .leading)
+
+                Divider()
+                    .frame(height: 80)
+                    .opacity(0.3)
+
+                // 右侧：活动分布
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("活动分布")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.5))
+
+                    ForEach(summary.activityDistribution.sorted(by: { $0.value > $1.value }).prefix(3), id: \.key) { type, count in
+                        HStack(spacing: 4) {
+                            Text(type.rawValue)
+                                .font(.caption2)
+                                .foregroundColor(.white.opacity(0.8))
+
+                            Spacer()
+
+                            Text("\(count)")
+                                .font(.caption2)
+                                .foregroundColor(.cyan)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         } else {
             VStack(spacing: 8) {
-                Image(systemName: "checkmark.circle")
+                Image(systemName: "calendar.badge.clock")
                     .font(.system(size: 32))
-                    .foregroundColor(.green.opacity(0.5))
-                Text("暂无错误")
+                    .foregroundColor(.gray.opacity(0.5))
+                Text("今日暂无数据")
                     .font(.caption)
                     .foregroundColor(.gray)
             }
@@ -446,5 +585,46 @@ struct CompactErrorView: View {
     }
 }
 
-// 以下组件已移除，使用上方的 CompactStatsView 和 CompactErrorView 代替
-// 旧版本的 CurrentSessionView, ErrorHistoryView, OverviewView 占用空间过大，不适合刘海显示
+// MARK: - 本周趋势视图
+
+struct WeeklyTrendView: View {
+    @ObservedObject var statsManager = StatisticsManager.shared
+
+    var body: some View {
+        let trend = statsManager.getWeeklyTrend().suffix(7)
+
+        if !trend.isEmpty && trend.contains(where: { $0.sessionCount > 0 }) {
+            HStack(spacing: 8) {
+                ForEach(trend, id: \.id) { day in
+                    VStack(spacing: 2) {
+                        Text(day.dateString)
+                            .font(.system(size: 8))
+                            .foregroundColor(.white.opacity(0.5))
+
+                        // 简化柱状图
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(day.sessionCount > 0 ? Color.cyan : Color.white.opacity(0.1))
+                            .frame(width: 12, height: max(CGFloat(day.durationHours) * 20, 4))
+
+                        Text(day.sessionCount > 0 ? "\(day.sessionCount)" : "")
+                            .font(.system(size: 8))
+                            .foregroundColor(.cyan)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            VStack(spacing: 8) {
+                Image(systemName: "chart.bar")
+                    .font(.system(size: 32))
+                    .foregroundColor(.gray.opacity(0.5))
+                Text("本周暂无数据")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+}
