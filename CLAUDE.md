@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 NotchNoti is a native macOS application that transforms the MacBook notch area into an intelligent notification center. It displays system notifications in the notch region with 14 unique animated notification types, each with custom visual effects including particle systems, dynamic gradients, and GPU-accelerated animations.
 
-The app integrates with Claude Code via hooks and receives notifications through Unix Domain Sockets (`~/.notch.sock`) and HTTP (port 9876).
+The app integrates with Claude Code via hooks and receives notifications through Unix Domain Sockets (sandbox path) and HTTP (port 9876).
 
 ## Build Commands
 
@@ -69,50 +69,63 @@ hdiutil create -volname "NotchNoti" \
 **Application Lifecycle** (`AppDelegate.swift`)
 - Entry point managing window controllers and screen detection
 - Monitors for screen parameter changes to rebuild windows for notch display
-- Maintains PID file for single-instance enforcement
+- Maintains PID file for single-instance enforcement (`temporaryDirectory/notchnoti.pid`)
 - Uses `.accessory` activation policy (no Dock icon)
+- Creates standard Edit menu for copy/paste support
 
 **View Model** (`NotchViewModel.swift`)
 - Centralized state management using Combine framework
 - Manages notch states: `closed`, `opened`, `popping`
-- Controls content types: `normal`, `menu`, `settings`, `history`, `stats`
-- Handles ProMotion 120Hz optimized spring animations
+- Controls content types: `normal`, `menu`, `settings`, `history`, `stats`, `aiAnalysis`
+- Handles ProMotion 120Hz optimized spring animations (mass: 0.7, stiffness: 450, damping: 28)
 - Manages user preferences via `@PublishedPersist` property wrapper
-- Shared singleton accessible via `NotchViewModel.shared`
+- Shared singleton accessible via `NotchViewModel.shared` (weak reference)
 
-**Notification System** (`NotificationModel.swift`, `NotificationManager.swift`)
+**Notification System** (`NotificationModel.swift`)
 - 14 notification types with unique animations and colors
 - 4-level priority system: low(0), normal(1), high(2), urgent(3)
-- Smart notification queue with priority-based insertion
-- LRU cache for history (max 50 items, max queue 10)
-- Notification merging within 0.5s time window for same source
-- Auto-calculated display duration based on priority and content length
-- System sound playback per notification type
+- **NotificationManager**: Singleton managing notification lifecycle
+  - Smart notification queue with priority-based insertion (max 10 queued)
+  - LRU cache for UI display (max 50 items in memory)
+  - Persistent storage for analysis (max 1000 items in UserDefaults)
+  - Notification merging within 0.5s time window for same source
+  - Auto-calculated display duration based on priority and content length
+  - System sound playback per notification type
+  - Weak timer references to avoid memory leaks
 
 **Communication Servers**
-- `UnixSocketServerSimple.swift`: Unix Domain Socket server at `~/.notch.sock` using BSD sockets
+- `UnixSocketServerSimple.swift`: BSD socket server in sandbox container
+  - Path: `NSHomeDirectory()/.notch.sock` → `~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock`
   - Processes statistics metadata from hook events
   - Calls `StatisticsManager.shared` to record session/tool/error data
-- `NotificationServer.swift`: HTTP server on port 9876 with `/notify` and `/health` endpoints
-- Both parse JSON notification requests and feed into `NotificationManager`
+  - Background queue processing (`.userInteractive` QoS)
+- `NotificationServer.swift`: HTTP server on port 9876
+  - Endpoints: `/notify` (POST), `/health` (GET)
+  - CORS headers for local web access
+  - Background queue processing (`.userInteractive` QoS)
+- Both parse `NotificationRequest` and feed into `NotificationManager`
 
-**Statistics System** (`Statistics.swift`)
-- Session tracking with timing, tool usage, and error recording
-- `StatisticsManager`: Singleton managing session lifecycle and data persistence
-- `SessionStats`: Tracks project, duration, operations, success rate, top tools
-- `ToolStats`: Per-tool usage count, success rate, average duration
-- `ErrorRecord`: Captures tool errors with timestamp and context
-- LRU cache: max 20 sessions stored in UserDefaults
-- Compact UI optimized for 600×160 notch display:
-  - Two-page layout (stats page + errors page)
-  - Horizontal layout with left metrics, right top tools
-  - Page indicators and smooth transitions
-  - Shows top 3 tools and recent 3 errors maximum
+**Dual Statistics System**
+- `Statistics.swift` - **Work Session Tracking**:
+  - `StatisticsManager`: Session lifecycle management (max 20 sessions)
+  - `WorkSession`: Tracks project, duration, operations, work mode, intensity
+  - `Activity`: Individual tool usage records with timing
+  - Work mode classification: writing, researching, debugging, developing, exploring
+  - Intensity levels based on pace (operations per minute)
+  - Today/weekly trend analysis
+- `NotificationStats.swift` - **Notification Analytics**:
+  - `NotificationStatsManager`: Notification distribution tracking
+  - Type distribution (success/error/warning/etc.)
+  - Priority distribution and time slot analysis
+  - Tool usage statistics extraction from metadata
+  - Action type classification (file modification, command execution, etc.)
+  - Compact UI for 600×160 notch display
 
 **Window Management** (`NotchWindow.swift`, `NotchWindowController.swift`)
 - Floating window positioned over MacBook notch area
 - Window level `.statusBar + 1` to stay above most UI
-- Seamless integration with notch hardware dimensions
+- Seamless integration with notch hardware dimensions via `NSScreen.notchSize` extension
+- Automatic rebuild on screen parameter changes
 
 **UI Views**
 - `NotchView.swift`: Main container coordinating header, content, menu
@@ -122,34 +135,58 @@ hdiutil create -volname "NotchNoti" \
 - `NotificationView.swift`: Individual notification rendering with type-specific animations
 - `NotificationEffects.swift`: Visual effects (particle systems, gradients, glows)
 - `NotchMenuView.swift`: Menu with history, settings, stats buttons
-- `NotchStatsView.swift`: Compact statistics interface with page switching
-- `CompactStatsView`: Left metrics (duration/ops/success) + right top 3 tools
-- `CompactErrorView`: Scrollable recent 3 errors with compact cards
+- `NotchStatsView.swift`: Compact statistics interface with page switching (3 pages)
+- `CompactNotificationStatsView`: Notification statistics with ring chart visualization
 
 **Event Handling** (`EventMonitors.swift`, `EventMonitor.swift`)
 - Global mouse and keyboard event monitoring
-- Drag-and-drop detection for notch interaction
+- Drag-and-drop detection for notch interaction (32pt detection range)
 - Click outside detection for auto-closing
 
 **Rust Hook Binary** (`.claude/hooks/rust-hook/src/main.rs`)
 - Standalone binary embedded in app bundle at `Contents/MacOS/notch-hook`
 - Processes 7 Claude Code hook events: SessionStart, PreToolUse, PostToolUse, Stop, Notification, PreCompact, UserPromptSubmit
-- Connects to Unix socket at `~/.notch.sock` (prioritizes this over sandbox path)
+- Socket path: `~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock` (hardcoded Bundle ID)
 - Tracks session timing with `session_start_time: Instant`
-- Sends notifications with statistics metadata (event_type, session_id, tool_name, etc.)
-- Filters out low-importance tools (Glob, Read for common paths)
-- Bundle ID: `com.qingchang.notchnoti` (used for path detection)
-- Socket priority: checks `~/.notch.sock` first, then sandbox container path
-- Built with: `cargo build --release` → 863KB binary
+- Sends notifications with statistics metadata (event_type, session_id, tool_name, duration)
+- Filters low-importance operations (echo, ls, pwd, curl localhost:9876)
+- Smart tool classification with icons and priorities
+- Diff preview generation for Edit/Write/MultiEdit operations
+- Built with: `cargo build --release` → ~863KB binary
+
+### Critical Architecture Details
+
+**Bundle Identifier Mismatch**:
+- Xcode project: `wiki.qaq.NotchNoti`
+- Rust hook hardcodes: `com.qingchang.notchnoti`
+- **Important**: If changing Bundle ID, must update Rust hook path logic
+
+**Socket Path Resolution**:
+- Swift: Uses `NSHomeDirectory()` which returns sandbox container path in sandboxed builds
+- Rust: Manually constructs path with hardcoded Bundle ID
+- Both resolve to: `~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock`
+- **Note**: No fallback to non-sandbox path currently implemented
+
+**Memory Management**:
+- All timers use `weak var` references to prevent retain cycles
+- NotificationManager uses `[weak self]` in async closures
+- LRU caching prevents unbounded memory growth
+- Background queue processing prevents UI blocking
 
 ### Data Flow
 
 1. **Notification Reception**: Unix socket or HTTP server receives JSON
 2. **Parsing**: `NotificationRequest` decoded to `NotchNotification`
-3. **Queue Management**: `NotificationManager` handles priority, merging, queueing
-4. **Display**: Manager opens notch via `NotchViewModel`, updates `currentNotification`
-5. **Animation**: `NotificationView` renders with type-specific effects
-6. **Lifecycle**: Auto-hide timer based on priority, then show next queued notification
+3. **Thread Safety**: Ensures main thread execution for UI updates
+4. **Merging Check**: Checks if notification should merge with current (0.5s window, same source)
+5. **Priority Handling**: Urgent notifications interrupt current, others queue
+6. **Queue Management**: Priority-based insertion, max 10 queued
+7. **Display**: Manager opens notch via `NotchViewModel`, updates `currentNotification`
+8. **Sound**: Plays type-specific system sound if enabled
+9. **Animation**: `NotificationView` renders with type-specific effects
+10. **Dual Storage**: Saves to memory cache (50) and persistent storage (1000)
+11. **Statistics**: Both `StatisticsManager` and `NotificationStatsManager` record data
+12. **Lifecycle**: Auto-hide timer based on priority, then show next queued notification
 
 ### Notification Types and Effects
 
@@ -180,14 +217,18 @@ Each type has unique animations defined in `NotificationEffects.swift`:
 - ProMotion 120Hz support with optimized spring physics
 - Metal GPU acceleration for all animations
 - Background queues for socket/HTTP processing (`.userInteractive` QoS)
-- LRU caching for notification history
+- LRU caching for notification history (dual-layer: memory + persistent)
 - Timer management on dedicated queue to prevent UI blocking
+- Weak references for timers and closures to prevent memory leaks
 
-### Persistence
+### Persistence Strategy
 - `@PublishedPersist` property wrapper auto-saves to UserDefaults
 - Persisted settings: language selection, haptic feedback, notification sound
+- Dual-layer notification storage:
+  - Memory layer: 50 items for UI display (fast, prevents lag)
+  - Persistent layer: 1000 items for analytics (complete history)
+- Statistics storage: 20 work sessions in UserDefaults
 - PID file at `temporaryDirectory/notchnoti.pid`
-- Socket file at `~/.notch.sock`
 
 ### Integration Points
 - **Claude Code**: Auto-configuration via settings panel, hook binary injection
@@ -198,8 +239,12 @@ Each type has unique animations defined in `NotificationEffects.swift`:
 ## Notification API
 
 ### Unix Socket (Recommended)
+Socket path: `~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock`
+
 ```bash
-echo '{"title":"Test","message":"Hello","type":"success","priority":2}' | nc -U ~/.notch.sock
+# Test connection
+echo '{"title":"Test","message":"Hello","type":"success","priority":2}' | \
+  nc -U ~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock
 ```
 
 ### HTTP Server
@@ -224,15 +269,18 @@ curl -X POST http://localhost:9876/notify \
     "project": "string",
     "tool_name": "string",
     "error_message": "string",
-    "context": "string"
+    "context": "string",
+    "duration": "number (seconds)"
   }
 }
 ```
 
 **Statistics Metadata**: When `metadata.event_type` is present, `UnixSocketServerSimple` processes statistics:
-- `session_start`: Creates new session in `StatisticsManager`
+- `session_start`: Creates new session in `StatisticsManager` with project name
+- `tool_use`/`tool_success`/`tool_complete`: Records activity with tool name and duration
 - `tool_error`: Records error with tool name, message, context
-- Hook binary automatically adds timing metadata
+- `session_end`/`Stop`: Ends current session
+- Hook binary automatically adds timing and session metadata
 
 ## System Requirements
 - macOS 13.0+ (Ventura)
@@ -271,35 +319,39 @@ This severe aspect ratio requires specialized UI patterns:
 ### Screen Detection
 `findScreenFitsOurNeeds()` in `AppDelegate` locates the built-in screen with notch. Falls back to main screen if no notch detected.
 
-### Window Positioning
-Notch dimensions are detected via `NSScreen.notchSize` extension. Window frame calculated to overlay notch area precisely.
-
-### Animation Tuning
-Spring parameters in `NotchViewModel`:
-- mass: 0.7 (lighter, snappier)
-- stiffness: 450 (faster response)
-- damping: 28 (moderate oscillation)
-
 ### Multi-language Support
 `Language.swift` provides system/simplified Chinese/English options. Stored in `selectedLanguage` preference.
 
 ### Haptic Feedback
 `hapticSender` PassthroughSubject triggers `NSHapticFeedbackManager` on notification events when enabled.
 
-## Common Patterns
+## Common Development Tasks
 
 ### Adding New Notification Type
-1. Add case to `NotchNotification.NotificationType` enum
+1. Add case to `NotchNotification.NotificationType` enum in `NotificationModel.swift`
 2. Define color in `color` computed property
 3. Define SF Symbol in `systemImage` property
 4. Add animation in `NotificationEffects.swift`
-5. Add sound mapping in `playNotificationSound()`
+5. Add sound mapping in `playNotificationSound()` in `NotificationManager`
+6. Update documentation in README.md and this file
 
 ### Modifying Display Duration
-Edit `calculateDisplayDuration()` in `NotificationManager` to adjust timing logic based on priority/content length.
+Edit `calculateDisplayDuration()` in `NotificationManager.swift` to adjust timing logic based on priority/content length.
 
-### Extending API
-Both servers parse `NotificationRequest` struct. Extend this codable type and mapping logic in `handleNotificationRequest()`.
+Current logic:
+- Urgent: 2.0s
+- High: 1.5s
+- Normal: 1.0s
+- Low: 0.8s
+- +0.5s per 50 characters (max +2.0s)
+- Diff notifications: fixed 2.0s
+
+### Extending Communication API
+Both servers parse `NotificationRequest` struct. To add fields:
+1. Update `NotificationRequest` in `NotificationServer.swift`
+2. Update parsing in `UnixSocketServerSimple.swift`
+3. Update `NotchNotification` model in `NotificationModel.swift`
+4. Update mapping logic in `handleNotificationRequest()`
 
 ### Rebuilding Hook Binary After Code Changes
 
@@ -310,22 +362,61 @@ When modifying the Rust hook (`.claude/hooks/rust-hook/src/main.rs`):
 cd .claude/hooks/rust-hook
 cargo build --release
 
-# 2. If app is installed in /Applications, update it there
+# 2. For development builds, update DerivedData
+cp target/release/notch-hook \
+   ~/Library/Developer/Xcode/DerivedData/NotchNoti-*/Build/Products/Debug/NotchNoti.app/Contents/MacOS/
+
+# 3. If app is installed in /Applications, update it there
 cp target/release/notch-hook /Applications/NotchNoti.app/Contents/MacOS/
 /usr/bin/codesign --force --sign "Developer ID Application: <NAME> (<TEAM_ID>)" \
    -o runtime /Applications/NotchNoti.app/Contents/MacOS/notch-hook
-
-# 3. For development builds, update DerivedData
-cp target/release/notch-hook \
-   ~/Library/Developer/Xcode/DerivedData/NotchNoti-*/Build/Products/Debug/NotchNoti.app/Contents/MacOS/
 
 # 4. Restart NotchNoti to use new hook
 killall NotchNoti
 open /Applications/NotchNoti.app  # or run from Xcode
 ```
 
-**Common hook issues**:
-- Socket not found: Check `~/.notch.sock` exists and app is running
-- Status code 1: Hook binary missing or unsigned
-- No statistics: Hook binary is outdated version without stats code
-- Wrong socket path: Hook using sandbox path but app using `~/.notch.sock`
+### Testing Socket Communication
+
+```bash
+# 1. Check if app is running and socket exists
+ls -la ~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock
+
+# 2. Send test notification
+echo '{"title":"Test","message":"Socket working!","type":"success","priority":2}' | \
+  nc -U ~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock
+
+# 3. Test HTTP endpoint
+curl http://localhost:9876/health
+
+# 4. Monitor hook output (when running from Xcode)
+# Check Xcode console for [UnixSocket], [NotificationManager], [DEBUG] prefixed logs
+```
+
+### Common Issues and Solutions
+
+**Hook not connecting**:
+- Verify socket file exists at correct sandbox path
+- Check NotchNoti app is running (look for menubar icon)
+- Ensure hook binary is present in app bundle
+- Check hook binary has correct permissions/signature
+- Review Xcode console for socket creation messages
+
+**Notifications not appearing**:
+- Check notification queue isn't full (max 10)
+- Verify JSON format matches schema
+- Ensure priority is 0-3
+- Check type is one of 14 valid types
+- Review [NotificationManager] logs in console
+
+**Statistics not recording**:
+- Ensure `metadata.event_type` is present in notification
+- Check `metadata.tool_name` is provided for tool operations
+- Verify `metadata.project` is set for session_start
+- Review [Stats] logs in console
+
+**Path resolution errors in Hook**:
+- Bundle ID must match in both Xcode project and Rust code
+- If changing Bundle ID, update `main.rs:105` socket path
+- Verify sandbox container path exists
+- Check CLAUDE_PROJECT_DIR environment variable is set

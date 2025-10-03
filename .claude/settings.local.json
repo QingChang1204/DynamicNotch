@@ -1,96 +1,96 @@
 {
-  "permissions": {
-    "allow": [
+  "hooks" : {
+    "Notification" : [
+      {
+        "hooks" : [
+          {
+            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout" : 2,
+            "type" : "command"
+          }
+        ],
+        "matcher" : ".*"
+      }
+    ],
+    "PostToolUse" : [
+      {
+        "hooks" : [
+          {
+            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout" : 2,
+            "type" : "command"
+          }
+        ],
+        "matcher" : ".*"
+      }
+    ],
+    "PreCompact" : [
+      {
+        "hooks" : [
+          {
+            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout" : 2,
+            "type" : "command"
+          }
+        ],
+        "matcher" : ".*"
+      }
+    ],
+    "PreToolUse" : [
+      {
+        "hooks" : [
+          {
+            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout" : 2,
+            "type" : "command"
+          }
+        ],
+        "matcher" : ".*"
+      }
+    ],
+    "SessionStart" : [
+      {
+        "hooks" : [
+          {
+            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout" : 2,
+            "type" : "command"
+          }
+        ],
+        "matcher" : ".*"
+      }
+    ],
+    "Stop" : [
+      {
+        "hooks" : [
+          {
+            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout" : 2,
+            "type" : "command"
+          }
+        ],
+        "matcher" : ".*"
+      }
+    ],
+    "UserPromptSubmit" : [
+      {
+        "hooks" : [
+          {
+            "command" : "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
+            "timeout" : 2,
+            "type" : "command"
+          }
+        ],
+        "matcher" : ".*"
+      }
+    ]
+  },
+  "outputStyle" : "Explanatory",
+  "permissions" : {
+    "allow" : [
       "Bash(codesign:*)",
       "Bash(/usr/bin/codesign:*)",
       "Bash(hdiutil create:*)"
     ]
-  },
-  "hooks": {
-    "Notification": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout": 2
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout": 2
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout": 2
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout": 2
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout": 2
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout": 2
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Applications/NotchNoti.app/Contents/MacOS/notch-hook",
-            "timeout": 2
-          }
-        ]
-      }
-    ]
-  },
-  "outputStyle": "Explanatory"
+  }
 }
