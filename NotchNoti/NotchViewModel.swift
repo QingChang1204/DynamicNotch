@@ -5,6 +5,8 @@ import LaunchAtLogin
 import SwiftUI
 
 class NotchViewModel: NSObject, ObservableObject {
+    static weak var shared: NotchViewModel?
+
     var cancellables: Set<AnyCancellable> = []
     let inset: CGFloat
 

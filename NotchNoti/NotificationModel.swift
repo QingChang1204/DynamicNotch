@@ -158,6 +158,23 @@ struct NotificationAction: Codable, Identifiable, Equatable {
     }
 }
 
+// MARK: - Notification Request (for JSON decoding from Unix Socket/HTTP)
+struct NotificationRequest: Codable {
+    let title: String
+    let message: String
+    let type: String?
+    let priority: Int?
+    let icon: String?
+    let actions: [NotificationActionRequest]?
+    let metadata: [String: String]?
+}
+
+struct NotificationActionRequest: Codable {
+    let label: String
+    let action: String
+    let style: String?
+}
+
 class NotificationManager: ObservableObject {
     static let shared = NotificationManager()
 

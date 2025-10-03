@@ -33,7 +33,6 @@
 		50CB767E2C3BC8880070D5E6 /* NotchViewModel+Events.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50CB767D2C3BC8880070D5E6 /* NotchViewModel+Events.swift */; };
 		50EFDB522C3BF7B4002D3E0F /* Ext+NSImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50EFDB512C3BF7B4002D3E0F /* Ext+NSImage.swift */; };
 		50NM00042C6F000000000004 /* NotificationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50NM00012C6F000000000001 /* NotificationModel.swift */; };
-		50NM00052C6F000000000005 /* NotificationServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50NM00022C6F000000000002 /* NotificationServer.swift */; };
 		50NM00062C6F000000000006 /* NotificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50NM00032C6F000000000003 /* NotificationView.swift */; };
 		60AD62872C579F4400299297 /* NotchSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60AD62862C579F4400299297 /* NotchSettingsView.swift */; };
 		6614A5F62E4C543900F1FEC1 /* PerformanceConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6614A5F52E4C543900F1FEC1 /* PerformanceConfig.swift */; };
@@ -44,8 +43,6 @@
 		69DFE6ED2E4B88110051A581 /* DiffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DFE6EC2E4B88110051A581 /* DiffView.swift */; };
 		69F9A6442E8EDBDA009FAEC5 /* Statistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A6432E8EDBDA009FAEC5 /* Statistics.swift */; };
 		69F9A6482E8FC406009FAEC5 /* AIAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A6472E8FC406009FAEC5 /* AIAnalysis.swift */; };
-		69F9A64A2E8FCA16009FAEC5 /* AISettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A6492E8FCA16009FAEC5 /* AISettingsWindowController.swift */; };
-		69F9A64C2E8FCE09009FAEC5 /* AISettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A64B2E8FCE09009FAEC5 /* AISettingsWindow.swift */; };
 		69F9A64E2E8FD195009FAEC5 /* AISettingsWindowSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A64D2E8FD195009FAEC5 /* AISettingsWindowSwiftUI.swift */; };
 		69F9A6502E8FD3DE009FAEC5 /* NotchCompactViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A64F2E8FD3DE009FAEC5 /* NotchCompactViews.swift */; };
 		69F9A6522E8FF2CF009FAEC5 /* NotificationStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A6512E8FF2CF009FAEC5 /* NotificationStats.swift */; };
@@ -93,7 +90,6 @@
 		50D7EFF22C3E484C005AC04E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		50EFDB512C3BF7B4002D3E0F /* Ext+NSImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Ext+NSImage.swift"; sourceTree = "<group>"; };
 		50NM00012C6F000000000001 /* NotificationModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationModel.swift; sourceTree = "<group>"; };
-		50NM00022C6F000000000002 /* NotificationServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationServer.swift; sourceTree = "<group>"; };
 		50NM00032C6F000000000003 /* NotificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationView.swift; sourceTree = "<group>"; };
 		60AD62862C579F4400299297 /* NotchSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchSettingsView.swift; sourceTree = "<group>"; };
 		6614A5F52E4C543900F1FEC1 /* PerformanceConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceConfig.swift; sourceTree = "<group>"; };
@@ -104,8 +100,6 @@
 		69DFE6EC2E4B88110051A581 /* DiffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffView.swift; sourceTree = "<group>"; };
 		69F9A6432E8EDBDA009FAEC5 /* Statistics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Statistics.swift; sourceTree = "<group>"; };
 		69F9A6472E8FC406009FAEC5 /* AIAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAnalysis.swift; sourceTree = "<group>"; };
-		69F9A6492E8FCA16009FAEC5 /* AISettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsWindowController.swift; sourceTree = "<group>"; };
-		69F9A64B2E8FCE09009FAEC5 /* AISettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsWindow.swift; sourceTree = "<group>"; };
 		69F9A64D2E8FD195009FAEC5 /* AISettingsWindowSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsWindowSwiftUI.swift; sourceTree = "<group>"; };
 		69F9A64F2E8FD3DE009FAEC5 /* NotchCompactViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchCompactViews.swift; sourceTree = "<group>"; };
 		69F9A6512E8FF2CF009FAEC5 /* NotificationStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationStats.swift; sourceTree = "<group>"; };
@@ -149,8 +143,6 @@
 				69F9A6512E8FF2CF009FAEC5 /* NotificationStats.swift */,
 				69F9A64F2E8FD3DE009FAEC5 /* NotchCompactViews.swift */,
 				69F9A64D2E8FD195009FAEC5 /* AISettingsWindowSwiftUI.swift */,
-				69F9A64B2E8FCE09009FAEC5 /* AISettingsWindow.swift */,
-				69F9A6492E8FCA16009FAEC5 /* AISettingsWindowController.swift */,
 				69F9A6472E8FC406009FAEC5 /* AIAnalysis.swift */,
 				69F9A6432E8EDBDA009FAEC5 /* Statistics.swift */,
 				50D7EFF22C3E484C005AC04E /* Info.plist */,
@@ -175,7 +167,6 @@
 				6614A5F52E4C543900F1FEC1 /* PerformanceConfig.swift */,
 				60AD62862C579F4400299297 /* NotchSettingsView.swift */,
 				50NM00012C6F000000000001 /* NotificationModel.swift */,
-				50NM00022C6F000000000002 /* NotificationServer.swift */,
 				50NM00032C6F000000000003 /* NotificationView.swift */,
 				504381A52C3A8CFD000ED325 /* NotchViewController.swift */,
 				504381A72C3A926E000ED325 /* NotchViewModel.swift */,
@@ -287,7 +278,6 @@
 				69F9A6482E8FC406009FAEC5 /* AIAnalysis.swift in Sources */,
 				504381AF2C3ADFF2000ED325 /* NotchContentView.swift in Sources */,
 				69F9A64E2E8FD195009FAEC5 /* AISettingsWindowSwiftUI.swift in Sources */,
-				69F9A64A2E8FCA16009FAEC5 /* AISettingsWindowController.swift in Sources */,
 				504381A02C3A8BA1000ED325 /* NotchView.swift in Sources */,
 				503D8EBA2C3F838200E173FF /* NotchMenuView.swift in Sources */,
 				6976430B2E4E3AB400BB17B5 /* ClaudeCodeSetup.swift in Sources */,
@@ -313,11 +303,9 @@
 				504381A82C3A926E000ED325 /* NotchViewModel.swift in Sources */,
 				5044EEA02C3B116000071C5C /* PublishedPersist.swift in Sources */,
 				50NM00042C6F000000000004 /* NotificationModel.swift in Sources */,
-				50NM00052C6F000000000005 /* NotificationServer.swift in Sources */,
 				6614A5F62E4C543900F1FEC1 /* PerformanceConfig.swift in Sources */,
 				50NM00062C6F000000000006 /* NotificationView.swift in Sources */,
 				69F9A6442E8EDBDA009FAEC5 /* Statistics.swift in Sources */,
-				69F9A64C2E8FCE09009FAEC5 /* AISettingsWindow.swift in Sources */,
 				664EC5342E4DA30D00E544F0 /* NotificationEffects.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

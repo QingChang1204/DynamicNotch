@@ -60,16 +60,6 @@ struct NotchSettingsView: View {
                                 .foregroundColor(.green)
                         }
                     }
-                    if NotificationServer.shared.isRunning {
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(Color.blue)
-                                .frame(width: 6, height: 6)
-                            Text("HTTP :9876")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.blue)
-                        }
-                    }
                 }
                 
                 Spacer()
