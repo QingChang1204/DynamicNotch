@@ -48,6 +48,7 @@
 		69F9A64C2E8FCE09009FAEC5 /* AISettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A64B2E8FCE09009FAEC5 /* AISettingsWindow.swift */; };
 		69F9A64E2E8FD195009FAEC5 /* AISettingsWindowSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A64D2E8FD195009FAEC5 /* AISettingsWindowSwiftUI.swift */; };
 		69F9A6502E8FD3DE009FAEC5 /* NotchCompactViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A64F2E8FD3DE009FAEC5 /* NotchCompactViews.swift */; };
+		69F9A6522E8FF2CF009FAEC5 /* NotificationStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A6512E8FF2CF009FAEC5 /* NotificationStats.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -106,6 +107,7 @@
 		69F9A64B2E8FCE09009FAEC5 /* AISettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsWindow.swift; sourceTree = "<group>"; };
 		69F9A64D2E8FD195009FAEC5 /* AISettingsWindowSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsWindowSwiftUI.swift; sourceTree = "<group>"; };
 		69F9A64F2E8FD3DE009FAEC5 /* NotchCompactViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchCompactViews.swift; sourceTree = "<group>"; };
+		69F9A6512E8FF2CF009FAEC5 /* NotificationStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationStats.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -141,6 +143,7 @@
 		504381822C3A86EA000ED325 /* NotchNoti */ = {
 			isa = PBXGroup;
 			children = (
+				69F9A6512E8FF2CF009FAEC5 /* NotificationStats.swift */,
 				69F9A64F2E8FD3DE009FAEC5 /* NotchCompactViews.swift */,
 				69F9A64D2E8FD195009FAEC5 /* AISettingsWindowSwiftUI.swift */,
 				69F9A64B2E8FCE09009FAEC5 /* AISettingsWindow.swift */,
@@ -300,6 +303,7 @@
 				501F0E8C2C59E6BD00F0113C /* Language.swift in Sources */,
 				5043819B2C3A8A06000ED325 /* AppDelegate.swift in Sources */,
 				664EC5382E4DDC6300E544F0 /* UnixSocketServerSimple.swift in Sources */,
+				69F9A6522E8FF2CF009FAEC5 /* NotificationStats.swift in Sources */,
 				504381932C3A8755000ED325 /* main.swift in Sources */,
 				60AD62872C579F4400299297 /* NotchSettingsView.swift in Sources */,
 				504381A82C3A926E000ED325 /* NotchViewModel.swift in Sources */,

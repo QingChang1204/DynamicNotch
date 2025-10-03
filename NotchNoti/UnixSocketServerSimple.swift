@@ -200,21 +200,25 @@ class UnixSocketServerSimple: ObservableObject {
 
     // 处理统计信息
     private func processStatistics(metadata: [String: String]) {
-        guard let eventType = metadata["event_type"] else { return }
+        // 优先使用 event_type，否则使用 event
+        let eventType = metadata["event_type"] ?? metadata["event"]
 
-        switch eventType {
+        guard let event = eventType else { return }
+
+        switch event {
         case "session_start":
             if let projectName = metadata["project"] {
                 StatisticsManager.shared.startSession(projectName: projectName)
             }
 
-        case "tool_use", "tool_success", "tool_complete":
-            if let toolName = metadata["tool_name"] {
+        case "tool_use", "tool_success", "tool_complete", "PreToolUse", "PostToolUse":
+            // 从 metadata 中获取工具名称（支持多种字段名）
+            if let toolName = metadata["tool_name"] ?? metadata["tool"] {
                 let duration = metadata["duration"].flatMap { TimeInterval($0) } ?? 0
                 StatisticsManager.shared.recordActivity(toolName: toolName, duration: duration)
             }
 
-        case "session_end":
+        case "session_end", "Stop":
             StatisticsManager.shared.endSession()
 
         default:

@@ -234,7 +234,10 @@ class NotificationManager: ObservableObject {
         
         // 添加到历史记录（使用 LRU 策略）
         addToHistory(notification)
-        
+
+        // 记录到统计系统
+        NotificationStatsManager.shared.recordNotification(notification)
+
         // 更新最后通知信息用于合并判断
         lastNotificationTime = Date()
         lastNotificationSource = notification.metadata?["source"] ?? notification.title
