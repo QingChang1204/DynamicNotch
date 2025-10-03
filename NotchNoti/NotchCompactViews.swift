@@ -190,7 +190,7 @@ struct CompactNotificationRow: View {
 
 struct CompactStatsView: View {
     var body: some View {
-        CompactNotificationStatsView()
+        CompactWorkSessionStatsView()  // 使用单页面工作会话统计
     }
 }
 

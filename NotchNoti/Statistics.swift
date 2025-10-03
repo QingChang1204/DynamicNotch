@@ -628,3 +628,292 @@ struct WeeklyTrendView: View {
         }
     }
 }
+
+// MARK: - 单页面紧凑型统计视图（600×160 优化）
+
+struct CompactWorkSessionStatsView: View {
+    @ObservedObject var statsManager = StatisticsManager.shared
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            if let session = statsManager.currentSession {
+                // 有会话时的布局
+                activeSessionLayout(session: session)
+            } else {
+                // 空闲时的紧凑布局
+                idleLayout
+            }
+
+            // 关闭按钮
+            closeButton
+        }
+        .frame(height: 160)
+    }
+
+    // MARK: - 活跃会话布局
+    private func activeSessionLayout(session: WorkSession) -> some View {
+        HStack(spacing: 16) {
+            // 左侧：环形进度 + 核心指标
+            sessionCircleView(session: session)
+                .frame(width: 140)
+
+            // 中间：工具使用迷你条形图
+            toolMiniChartView(session: session)
+                .frame(width: 200)
+
+            // 右侧：今日汇总卡片
+            todayCompactCard
+                .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - 空闲布局
+    private var idleLayout: some View {
+        HStack(spacing: 20) {
+            // 左侧：空闲状态
+            VStack(spacing: 6) {
+                ZStack {
+                    Circle()
+                        .stroke(Color.white.opacity(0.1), lineWidth: 3)
+                        .frame(width: 60, height: 60)
+
+                    Image(systemName: "moon.stars")
+                        .font(.system(size: 24))
+                        .foregroundColor(.gray.opacity(0.4))
+                }
+
+                Text("空闲中")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.gray.opacity(0.6))
+            }
+            .frame(maxWidth: .infinity)
+
+            Divider()
+                .frame(height: 100)
+                .opacity(0.1)
+
+            // 右侧：今日汇总（即使空闲也显示）
+            todayCompactCard
+                .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - 环形进度视图
+    private func sessionCircleView(session: WorkSession) -> some View {
+        VStack(spacing: 6) {
+            ZStack {
+                // 背景圆环
+                Circle()
+                    .stroke(Color.white.opacity(0.08), lineWidth: 8)
+                    .frame(width: 90, height: 90)
+
+                // 进度圆环（基于时长）
+                Circle()
+                    .trim(from: 0, to: min(session.duration / 3600, 1.0)) // 1小时为满
+                    .stroke(
+                        AngularGradient(
+                            colors: [.cyan, .blue, .purple, .cyan],
+                            center: .center
+                        ),
+                        style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                    )
+                    .frame(width: 90, height: 90)
+                    .rotationEffect(.degrees(-90))
+
+                // 中心内容
+                VStack(spacing: 2) {
+                    Text(formatDuration(session.duration))
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+
+                    Text(session.projectName)
+                        .font(.system(size: 8, weight: .medium))
+                        .foregroundColor(.white.opacity(0.5))
+                        .lineLimit(1)
+                        .frame(width: 70)
+                }
+            }
+
+            // 底部标签
+            HStack(spacing: 8) {
+                Label("\(session.totalActivities)", systemImage: "bolt.fill")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundColor(.orange)
+
+                Text(session.workMode.rawValue)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(.purple.opacity(0.8))
+            }
+        }
+    }
+
+    // MARK: - 工具迷你图表
+    private func toolMiniChartView(session: WorkSession) -> some View {
+        let toolStats = Dictionary(grouping: session.activities, by: { $0.tool })
+            .map { (tool: $0.key, count: $0.value.count) }
+            .sorted { $0.count > $1.count }
+            .prefix(6)
+
+        return VStack(alignment: .leading, spacing: 4) {
+            Text("工具使用")
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundColor(.white.opacity(0.4))
+                .textCase(.uppercase)
+
+            if !toolStats.isEmpty {
+                HStack(alignment: .bottom, spacing: 4) {
+                    ForEach(Array(toolStats.enumerated()), id: \.element.tool) { index, stat in
+                        VStack(spacing: 3) {
+                            // 柱状图
+                            let maxCount = toolStats.first?.count ?? 1
+                            let height = CGFloat(stat.count) / CGFloat(maxCount) * 70 + 10
+
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [getToolColor(stat.tool), getToolColor(stat.tool).opacity(0.6)],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                                .frame(width: 24, height: height)
+                                .overlay(
+                                    Text("\(stat.count)")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .shadow(color: .black.opacity(0.5), radius: 1)
+                                )
+
+                            // 工具名
+                            Text(stat.tool)
+                                .font(.system(size: 7, weight: .medium))
+                                .foregroundColor(.white.opacity(0.6))
+                                .lineLimit(1)
+                                .frame(width: 28)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    // MARK: - 今日汇总卡片
+    private var todayCompactCard: some View {
+        let summary = statsManager.getTodaySummary()
+
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("今日")
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundColor(.white.opacity(0.4))
+                .textCase(.uppercase)
+
+            if summary.sessionCount > 0 {
+                VStack(alignment: .leading, spacing: 6) {
+                    // 时长卡片
+                    HStack(spacing: 6) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.green.opacity(0.15))
+                                .frame(width: 32, height: 32)
+
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.green)
+                        }
+
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(String(format: "%.1fh", summary.durationHours))
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                            Text("\(summary.sessionCount) 会话")
+                                .font(.system(size: 8))
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                    }
+
+                    // 操作数条
+                    HStack(spacing: 6) {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.orange)
+                            .frame(width: 20)
+
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(Color.white.opacity(0.05))
+
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [.orange, .red],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .frame(width: min(CGFloat(summary.totalActivities) / 100 * geo.size.width, geo.size.width))
+                            }
+                        }
+                        .frame(height: 8)
+
+                        Text("\(summary.totalActivities)")
+                            .font(.system(size: 10, weight: .semibold, design: .rounded))
+                            .foregroundColor(.orange)
+                            .frame(width: 30, alignment: .trailing)
+                    }
+                }
+            } else {
+                VStack(spacing: 4) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 20))
+                        .foregroundColor(.gray.opacity(0.3))
+                    Text("暂无数据")
+                        .font(.system(size: 9))
+                        .foregroundColor(.gray.opacity(0.5))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+    }
+
+    // MARK: - 辅助方法
+
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = (Int(duration) % 3600) / 60
+        if hours > 0 {
+            return String(format: "%dh%02dm", hours, minutes)
+        } else {
+            return String(format: "%dm", minutes)
+        }
+    }
+
+    private func getToolColor(_ tool: String) -> Color {
+        switch tool.lowercased() {
+        case "read": return .blue
+        case "edit", "write": return .green
+        case "bash": return .orange
+        case "grep", "glob": return .purple
+        case "task": return .pink
+        default: return .cyan
+        }
+    }
+
+    private var closeButton: some View {
+        Button(action: {
+            NotchViewModel.shared?.contentType = .normal
+        }) {
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 16))
+                .foregroundColor(.white.opacity(0.3))
+                .background(Circle().fill(Color.black.opacity(0.3)))
+        }
+        .buttonStyle(PlainButtonStyle())
+        .padding(10)
+    }
+}
