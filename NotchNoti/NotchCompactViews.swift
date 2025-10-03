@@ -26,14 +26,42 @@ struct CompactNotificationHistoryView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
-                // 搜索栏 - 只在有通知时显示
+                // 顶部栏：关闭按钮 + 搜索框
                 if !manager.notificationHistory.isEmpty {
-                    searchBar
-                        .padding(.horizontal, 12)
-                        .padding(.top, 8)
-                        .padding(.bottom, 4)
+                    HStack(spacing: 8) {
+                        // 关闭按钮
+                        Button(action: {
+                            NotchViewModel.shared?.contentType = .normal
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.white.opacity(0.4))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+
+                        // 搜索栏
+                        searchBar
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
+                } else {
+                    // 没有通知时，只显示关闭按钮
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            NotchViewModel.shared?.contentType = .normal
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.white.opacity(0.4))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
                 }
 
                 if filteredNotifications.isEmpty {
@@ -51,18 +79,6 @@ struct CompactNotificationHistoryView: View {
                     }
                 }
             }
-
-            // 右上角关闭按钮
-            Button(action: {
-                NotchViewModel.shared?.contentType = .normal
-            }) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 16))
-                    .foregroundColor(.white.opacity(0.4))
-                    .background(Circle().fill(Color.black.opacity(0.2)))
-            }
-            .buttonStyle(PlainButtonStyle())
-            .padding(10)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.opacity(0.15))
