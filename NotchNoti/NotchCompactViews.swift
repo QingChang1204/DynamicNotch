@@ -342,9 +342,10 @@ struct CompactAIAnalysisView: View {
         }
     }
 
-    // 初始状态
+    // 初始状态 - 横向紧凑布局
     private func initialState(summary: StatsSummary) -> some View {
-        VStack(spacing: 16) {
+        HStack(spacing: 20) {
+            // 左侧图标
             ZStack {
                 Circle()
                     .fill(
@@ -354,17 +355,18 @@ struct CompactAIAnalysisView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 56, height: 56)
-                    .blur(radius: 8)
+                    .frame(width: 48, height: 48)
+                    .blur(radius: 6)
 
                 Image(systemName: "sparkles")
-                    .font(.system(size: 24))
+                    .font(.system(size: 20))
                     .foregroundColor(.purple)
             }
 
-            VStack(spacing: 8) {
+            // 右侧内容
+            VStack(alignment: .leading, spacing: 6) {
                 Text("AI 工作洞察")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.white)
 
                 if summary.totalCount > 0, aiManager.loadConfig() != nil {
@@ -375,12 +377,13 @@ struct CompactAIAnalysisView: View {
                     }) {
                         HStack(spacing: 4) {
                             Image(systemName: "wand.and.stars")
+                                .font(.system(size: 9))
                             Text("分析通知模式")
+                                .font(.system(size: 10, weight: .medium))
                         }
-                        .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
                         .background(
                             LinearGradient(
                                 colors: [.purple, .pink],
@@ -388,23 +391,26 @@ struct CompactAIAnalysisView: View {
                                 endPoint: .trailing
                             )
                         )
-                        .cornerRadius(6)
+                        .cornerRadius(5)
                     }
                     .buttonStyle(.plain)
                 } else if summary.totalCount == 0 {
                     Text("暂无通知数据")
-                        .font(.system(size: 10))
+                        .font(.system(size: 9))
                         .foregroundColor(.white.opacity(0.5))
                 } else {
                     Button("配置AI分析") {
                         AISettingsWindowManager.shared.show()
                     }
-                    .font(.system(size: 10))
+                    .font(.system(size: 9))
                     .buttonStyle(.borderless)
                 }
             }
+
+            Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.leading, 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 
     private var closeButton: some View {
