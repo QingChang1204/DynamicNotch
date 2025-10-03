@@ -62,7 +62,7 @@ struct NotificationView: View, Equatable {
                         GlowEffectView(color: notification.color, intensity: 0.8)
                             .frame(width: 50, height: 50)
                     }
-                    
+
                     // 紧急通知的脉冲背景
                     if notification.priority == .urgent {
                         Circle()
@@ -72,7 +72,7 @@ struct NotificationView: View, Equatable {
                             .opacity(pulseEffect ? 0 : 0.8)
                             .animation(AnimationConstants.pulse, value: pulseEffect)
                     }
-                    
+
                     // 使用动画图标或普通图标
                     if notification.hasAnimatedIcon {
                         AnimatedIconView(
@@ -89,12 +89,35 @@ struct NotificationView: View, Equatable {
                                     radius: notification.priority == .urgent ? 8 : 0)
                             .animation(AnimationConstants.springSmooth, value: manager.mergedCount)
                     }
-                    
+
                     // 进度指示器（用于上传/下载）
                     if let progress = notification.progressValue,
                        (notification.type == .download || notification.type == .upload) {
                         CircularProgressView(progress: progress, color: notification.color)
                             .frame(width: 35, height: 35)
+                    }
+
+                    // 合并数量徽章
+                    if manager.mergedCount > 0 {
+                        VStack {
+                            HStack {
+                                Spacer()
+                                Text("\(manager.mergedCount + 1)")
+                                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(
+                                        Capsule()
+                                            .fill(notification.color.opacity(0.9))
+                                            .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                                    )
+                                    .offset(x: 8, y: -8)
+                                    .transition(.scale.combined(with: .opacity))
+                            }
+                            Spacer()
+                        }
+                        .frame(width: 40, height: 40)
                     }
                 }
             

@@ -49,6 +49,7 @@
 		69F9A64E2E8FD195009FAEC5 /* AISettingsWindowSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A64D2E8FD195009FAEC5 /* AISettingsWindowSwiftUI.swift */; };
 		69F9A6502E8FD3DE009FAEC5 /* NotchCompactViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A64F2E8FD3DE009FAEC5 /* NotchCompactViews.swift */; };
 		69F9A6522E8FF2CF009FAEC5 /* NotificationStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A6512E8FF2CF009FAEC5 /* NotificationStats.swift */; };
+		69F9A6542E900365009FAEC5 /* GlobalShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A6532E900365009FAEC5 /* GlobalShortcuts.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -108,6 +109,7 @@
 		69F9A64D2E8FD195009FAEC5 /* AISettingsWindowSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsWindowSwiftUI.swift; sourceTree = "<group>"; };
 		69F9A64F2E8FD3DE009FAEC5 /* NotchCompactViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchCompactViews.swift; sourceTree = "<group>"; };
 		69F9A6512E8FF2CF009FAEC5 /* NotificationStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationStats.swift; sourceTree = "<group>"; };
+		69F9A6532E900365009FAEC5 /* GlobalShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalShortcuts.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -143,6 +145,7 @@
 		504381822C3A86EA000ED325 /* NotchNoti */ = {
 			isa = PBXGroup;
 			children = (
+				69F9A6532E900365009FAEC5 /* GlobalShortcuts.swift */,
 				69F9A6512E8FF2CF009FAEC5 /* NotificationStats.swift */,
 				69F9A64F2E8FD3DE009FAEC5 /* NotchCompactViews.swift */,
 				69F9A64D2E8FD195009FAEC5 /* AISettingsWindowSwiftUI.swift */,
@@ -289,6 +292,7 @@
 				503D8EBA2C3F838200E173FF /* NotchMenuView.swift in Sources */,
 				6976430B2E4E3AB400BB17B5 /* ClaudeCodeSetup.swift in Sources */,
 				69F9A6502E8FD3DE009FAEC5 /* NotchCompactViews.swift in Sources */,
+				69F9A6542E900365009FAEC5 /* GlobalShortcuts.swift in Sources */,
 				50EFDB522C3BF7B4002D3E0F /* Ext+NSImage.swift in Sources */,
 				5044EE9E2C3B0F3D00071C5C /* Ext+FileProvider.swift in Sources */,
 				504381A42C3A8C7E000ED325 /* NotchWindowController.swift in Sources */,

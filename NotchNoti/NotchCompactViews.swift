@@ -11,21 +11,44 @@ import SwiftUI
 
 struct CompactNotificationHistoryView: View {
     @ObservedObject var manager = NotificationManager.shared
+    @State private var searchText = ""
+
+    // 过滤后的通知列表
+    private var filteredNotifications: [NotchNotification] {
+        if searchText.isEmpty {
+            return Array(manager.notificationHistory.prefix(6))
+        } else {
+            return manager.notificationHistory.filter { notification in
+                notification.title.localizedCaseInsensitiveContains(searchText) ||
+                notification.message.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            if manager.notificationHistory.isEmpty {
-                emptyState
-            } else {
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 1) {
-                        ForEach(manager.notificationHistory.prefix(6)) { notification in
-                            CompactNotificationRow(notification: notification)
+            VStack(spacing: 0) {
+                // 搜索栏 - 只在有通知时显示
+                if !manager.notificationHistory.isEmpty {
+                    searchBar
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                        .padding(.bottom, 4)
+                }
+
+                if filteredNotifications.isEmpty {
+                    emptyState
+                } else {
+                    ScrollView(showsIndicators: false) {
+                        LazyVStack(spacing: 1) {
+                            ForEach(filteredNotifications) { notification in
+                                CompactNotificationRow(notification: notification)
+                            }
                         }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 4)
+                        .padding(.bottom, 8)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
-                    .padding(.bottom, 8)
                 }
             }
 
@@ -45,12 +68,39 @@ struct CompactNotificationHistoryView: View {
         .background(Color.black.opacity(0.15))
     }
 
+    // 搜索栏
+    private var searchBar: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 10))
+                .foregroundColor(.white.opacity(0.5))
+
+            TextField("搜索通知...", text: $searchText)
+                .font(.system(size: 11))
+                .textFieldStyle(.plain)
+                .foregroundColor(.white)
+
+            if !searchText.isEmpty {
+                Button(action: { searchText = "" }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.4))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.white.opacity(0.08))
+        .cornerRadius(8)
+    }
+
     private var emptyState: some View {
         VStack(spacing: 12) {
-            Image(systemName: "bell.slash")
+            Image(systemName: searchText.isEmpty ? "bell.slash" : "magnifyingglass")
                 .font(.system(size: 32))
                 .foregroundColor(.white.opacity(0.25))
-            Text("暂无通知")
+            Text(searchText.isEmpty ? "暂无通知" : "无匹配结果")
                 .font(.system(size: 11))
                 .foregroundColor(.white.opacity(0.5))
         }

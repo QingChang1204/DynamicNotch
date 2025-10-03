@@ -30,6 +30,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         isLaunchedAtLogin = LaunchAtLogin.wasLaunchedAtLogin
 
         _ = EventMonitors.shared
+
+        // 注册全局快捷键
+        GlobalShortcutManager.shared.registerShortcuts()
+
         let timer = Timer.scheduledTimer(
             withTimeInterval: 1,
             repeats: true
@@ -65,6 +69,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_: Notification) {
+        // 注销全局快捷键
+        GlobalShortcutManager.shared.unregisterShortcuts()
+
         try? FileManager.default.removeItem(at: temporaryDirectory)
         try? FileManager.default.removeItem(at: pidFile)
     }
