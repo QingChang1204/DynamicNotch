@@ -42,6 +42,10 @@ class AIAnalysisManager: ObservableObject {
     @Published var lastAnalysis: String?
     @Published var lastError: String?
 
+    // 项目选择
+    @Published var availableProjects: [String] = []
+    @Published var selectedProject: String? = nil
+
     private let configKey = "com.notchnoti.llmConfig"
 
     // 缓存机制：避免重复分析相同会话
@@ -49,7 +53,9 @@ class AIAnalysisManager: ObservableObject {
     private var cacheTimestamps: [String: Date] = [:]  // sessionID -> timestamp
     private let cacheExpiration: TimeInterval = 300  // 5分钟缓存过期
 
-    private init() {}
+    private init() {
+        updateAvailableProjects()
+    }
 
     // 加载配置
     func loadConfig() -> LLMConfig? {
@@ -121,15 +127,38 @@ class AIAnalysisManager: ObservableObject {
         }
     }
 
+    // 更新可用项目列表
+    func updateAvailableProjects() {
+        let notifications = NotificationManager.shared.notificationHistory
+        var projects = Set<String>()
+
+        for notification in notifications {
+            if let project = notification.metadata?["project"] {
+                projects.insert(project)
+            }
+        }
+
+        availableProjects = Array(projects).sorted()
+
+        // 如果当前没有选中项目，默认选中第一个
+        if selectedProject == nil && !availableProjects.isEmpty {
+            selectedProject = availableProjects[0]
+        }
+    }
+
     // 分析通知统计数据
     func analyzeNotifications(summary: StatsSummary) async {
+        // 先更新项目列表
+        updateAvailableProjects()
+
         guard let config = loadConfig() else {
             lastError = "请先配置LLM设置"
             return
         }
 
-        // 生成缓存key（使用总数+时间戳哈希）
-        let cacheKey = "notif_\(summary.totalCount)_\(summary.startTime.timeIntervalSince1970)"
+        // 生成缓存key（包含项目名）
+        let projectKey = selectedProject ?? "all"
+        let cacheKey = "notif_\(projectKey)_\(summary.totalCount)_\(summary.startTime.timeIntervalSince1970)"
         if let cachedAnalysis = getCachedAnalysis(for: cacheKey) {
             lastAnalysis = cachedAnalysis
             return
@@ -138,8 +167,8 @@ class AIAnalysisManager: ObservableObject {
         isAnalyzing = true
         lastError = nil
 
-        // 生成通知统计摘要
-        let notifSummary = generateNotificationSummary(summary)
+        // 生成通知统计摘要（传入选中的项目）
+        let notifSummary = generateNotificationSummary(summary, projectFilter: selectedProject)
 
         // 检查是否有足够数据
         if notifSummary.contains("【数据不足】") {
@@ -224,7 +253,7 @@ class AIAnalysisManager: ObservableObject {
     }
 
     // 生成项目工作总结（基于通知历史和 diff 文件）
-    private func generateNotificationSummary(_ summary: StatsSummary) -> String {
+    private func generateNotificationSummary(_ summary: StatsSummary, projectFilter: String?) -> String {
         let notifications = NotificationManager.shared.notificationHistory
 
         // 按项目分组通知
@@ -233,6 +262,11 @@ class AIAnalysisManager: ObservableObject {
         for notification in notifications {
             guard let metadata = notification.metadata,
                   let project = metadata["project"] else {
+                continue
+            }
+
+            // 如果指定了项目过滤，只处理该项目的通知
+            if let filter = projectFilter, filter != project {
                 continue
             }
 
@@ -269,9 +303,16 @@ class AIAnalysisManager: ObservableObject {
             """
         }
 
-        // 选择最活跃的项目（通知最多的）
-        guard let mainProject = projectData.max(by: { $0.value.diffPaths.count < $1.value.diffPaths.count })?.value else {
-            return "【数据不足】无法识别主要工作项目"
+        // 选择要分析的项目
+        let mainProject: ProjectAnalysis
+        if let filter = projectFilter, let filtered = projectData[filter] {
+            mainProject = filtered
+        } else {
+            // 如果没有指定过滤，选择最活跃的项目
+            guard let active = projectData.max(by: { $0.value.diffPaths.count < $1.value.diffPaths.count })?.value else {
+                return "【数据不足】无法识别主要工作项目"
+            }
+            mainProject = active
         }
 
         // 读取最近的 diff 内容

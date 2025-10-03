@@ -218,6 +218,9 @@ struct CompactAIAnalysisView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.opacity(0.15))
+        .onAppear {
+            aiManager.updateAvailableProjects()
+        }
     }
 
     // 分析中状态
@@ -313,6 +316,24 @@ struct CompactAIAnalysisView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.white.opacity(0.9))
 
+                    // 项目选择器
+                    if !aiManager.availableProjects.isEmpty {
+                        Picker("", selection: Binding(
+                            get: { aiManager.selectedProject ?? aiManager.availableProjects.first ?? "" },
+                            set: { aiManager.selectedProject = $0 }
+                        )) {
+                            ForEach(aiManager.availableProjects, id: \.self) { project in
+                                Text(project)
+                                    .font(.system(size: 9))
+                                    .tag(project)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .font(.system(size: 9))
+                        .frame(height: 16)
+                    }
+
                     Spacer()
                 }
 
@@ -328,7 +349,8 @@ struct CompactAIAnalysisView: View {
                     }) {
                         HStack(spacing: 3) {
                             Image(systemName: "arrow.clockwise")
-                            Text("重新分析")
+                            Text("重新分析 \(aiManager.selectedProject ?? "")")
+                                .lineLimit(1)
                         }
                         .font(.system(size: 9, weight: .medium))
                         .foregroundColor(.purple.opacity(0.8))
@@ -381,9 +403,29 @@ struct CompactAIAnalysisView: View {
 
             // 右侧内容
             VStack(alignment: .leading, spacing: 6) {
-                Text("AI 工作洞察")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.white)
+                HStack(spacing: 6) {
+                    Text("AI 工作洞察")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.white)
+
+                    // 项目选择器
+                    if !aiManager.availableProjects.isEmpty {
+                        Picker("", selection: Binding(
+                            get: { aiManager.selectedProject ?? aiManager.availableProjects.first ?? "" },
+                            set: { aiManager.selectedProject = $0 }
+                        )) {
+                            ForEach(aiManager.availableProjects, id: \.self) { project in
+                                Text(project)
+                                    .font(.system(size: 9))
+                                    .tag(project)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .font(.system(size: 9))
+                        .frame(height: 18)
+                    }
+                }
 
                 if summary.totalCount > 0, aiManager.loadConfig() != nil {
                     Button(action: {
@@ -394,8 +436,9 @@ struct CompactAIAnalysisView: View {
                         HStack(spacing: 4) {
                             Image(systemName: "wand.and.stars")
                                 .font(.system(size: 9))
-                            Text("分析通知模式")
+                            Text("分析 \(aiManager.selectedProject ?? "项目")")
                                 .font(.system(size: 10, weight: .medium))
+                                .lineLimit(1)
                         }
                         .foregroundColor(.white)
                         .padding(.horizontal, 10)
