@@ -54,23 +54,9 @@ class NotchViewModel: NSObject, ObservableObject {
         case summaryHistory
     }
 
-    var notchOpenedRect: CGRect {
-        .init(
-            x: screenRect.origin.x + (screenRect.width - notchOpenedSize.width) / 2,
-            y: screenRect.origin.y + screenRect.height - notchOpenedSize.height,
-            width: notchOpenedSize.width,
-            height: notchOpenedSize.height
-        )
-    }
-
-    var headlineOpenedRect: CGRect {
-        .init(
-            x: screenRect.origin.x + (screenRect.width - notchOpenedSize.width) / 2,
-            y: screenRect.origin.y + screenRect.height - deviceNotchRect.height,
-            width: notchOpenedSize.width,
-            height: deviceNotchRect.height
-        )
-    }
+    // 缓存的 rect，避免频繁计算（在 screenRect/deviceNotchRect 变化时更新）
+    @Published private(set) var notchOpenedRect: CGRect = .zero
+    @Published private(set) var headlineOpenedRect: CGRect = .zero
 
     @Published private(set) var status: Status = .closed
     @Published var openReason: OpenReason = .unknown
@@ -78,8 +64,12 @@ class NotchViewModel: NSObject, ObservableObject {
 
     @Published var spacing: CGFloat = 16
     @Published var cornerRadius: CGFloat = 16
-    @Published var deviceNotchRect: CGRect = .zero
-    @Published var screenRect: CGRect = .zero
+    @Published var deviceNotchRect: CGRect = .zero {
+        didSet { updateCachedRects() }
+    }
+    @Published var screenRect: CGRect = .zero {
+        didSet { updateCachedRects() }
+    }
     @Published var optionKeyPressed: Bool = false
     @Published var notchVisible: Bool = true
 
@@ -135,5 +125,22 @@ class NotchViewModel: NSObject, ObservableObject {
         if wasViewingOtherContent {
             NotificationManager.shared.checkAndShowPendingNotifications()
         }
+    }
+
+    // 更新缓存的 rect（避免在鼠标事件中频繁计算）
+    private func updateCachedRects() {
+        notchOpenedRect = CGRect(
+            x: screenRect.origin.x + (screenRect.width - notchOpenedSize.width) / 2,
+            y: screenRect.origin.y + screenRect.height - notchOpenedSize.height,
+            width: notchOpenedSize.width,
+            height: notchOpenedSize.height
+        )
+
+        headlineOpenedRect = CGRect(
+            x: screenRect.origin.x + (screenRect.width - notchOpenedSize.width) / 2,
+            y: screenRect.origin.y + screenRect.height - deviceNotchRect.height,
+            width: notchOpenedSize.width,
+            height: deviceNotchRect.height
+        )
     }
 }

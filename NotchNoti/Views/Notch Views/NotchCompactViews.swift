@@ -13,6 +13,11 @@ struct CompactNotificationHistoryView: View {
     @ObservedObject var manager = NotificationManager.shared
     @State private var searchText = ""
 
+    // 判断是否在历史视图（只有历史视图才显示搜索和清空按钮）
+    private var isHistoryView: Bool {
+        NotchViewModel.shared?.contentType == .history
+    }
+
     // 过滤后的通知列表
     private var filteredNotifications: [NotchNotification] {
         if searchText.isEmpty {
@@ -28,8 +33,8 @@ struct CompactNotificationHistoryView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
-                // 顶部栏：搜索框 + 操作按钮
-                if !manager.notificationHistory.isEmpty {
+                // 顶部栏：只在历史视图显示搜索框和清空按钮
+                if isHistoryView && !manager.notificationHistory.isEmpty {
                     HStack(spacing: 8) {
                         // 搜索栏
                         searchBar
@@ -54,25 +59,11 @@ struct CompactNotificationHistoryView: View {
                                 .foregroundColor(.white.opacity(0.5))
                         }
                         .buttonStyle(PlainButtonStyle())
+                        .help("返回")
                     }
                     .padding(.horizontal, 12)
                     .padding(.top, 8)
                     .padding(.bottom, 6)
-                } else {
-                    // 没有通知时，只显示关闭按钮
-                    HStack {
-                        Spacer()
-                        Button(action: {
-                            NotchViewModel.shared?.returnToNormal()
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(.white.opacity(0.5))
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
                 }
 
                 if filteredNotifications.isEmpty {

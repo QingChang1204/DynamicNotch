@@ -27,16 +27,8 @@ extension NotchViewModel {
                     let hasActiveNotification = NotificationManager.shared.showNotification
                     let minimumDisplayTime: TimeInterval = hasActiveNotification ? 0.7 : 0
 
-                    // 统计视图需要精确点击，禁用外部点击关闭（只能通过关闭按钮关闭）
-                    let isStatsView = contentType == .stats
-
                     // touch outside, close
                     if !notchOpenedRect.contains(mouseLocation) {
-                        // 统计视图不响应外部点击关闭
-                        if isStatsView {
-                            return
-                        }
-
                         if hasActiveNotification {
                             // 给通知一个最小显示时间
                             DispatchQueue.main.asyncAfter(deadline: .now() + minimumDisplayTime) { [weak self] in

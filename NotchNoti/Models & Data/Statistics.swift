@@ -1672,7 +1672,7 @@ struct GlobalStatsView: View {
                         .font(.system(size: 10))
                         .foregroundColor(.cyan.opacity(0.7))
 
-                    Text((stats?.projectName ?? "全部").prefix(3))  // 限制最多3个字符
+                    Text((selectedProject ?? "全部").prefix(3))  // 使用 selectedProject 而不是 stats.projectName
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.white.opacity(0.7))
                         .lineLimit(1)
