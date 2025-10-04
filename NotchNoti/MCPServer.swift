@@ -101,99 +101,85 @@ class NotchMCPServer {
     // MARK: - Setup Methods
 
     private func setupTools() {
-        // Tool 1: 显示进度通知
-        tools.append(Tool(
-            name: "notch_show_progress",
-            description: "Display a progress notification in the MacBook notch area",
-            inputSchema: .object([
-                "type": .string("object"),
-                "properties": .object([
-                    "title": .object([
-                        "type": .string("string"),
-                        "description": .string("Progress title")
-                    ]),
-                    "progress": .object([
-                        "type": .string("number"),
-                        "description": .string("Progress percentage (0.0 to 1.0)")
-                    ]),
-                    "cancellable": .object([
-                        "type": .string("boolean"),
-                        "description": .string("Whether the operation can be cancelled")
-                    ])
-                ]),
-                "required": .array([.string("title"), .string("progress")])
-            ])
-        ))
-
-        // Tool 2: 显示结果通知
-        tools.append(Tool(
-            name: "notch_show_result",
-            description: "Show an operation result notification with rich details",
-            inputSchema: .object([
-                "type": .string("object"),
-                "properties": .object([
-                    "title": .object([
-                        "type": .string("string"),
-                        "description": .string("Notification title")
-                    ]),
-                    "type": .object([
-                        "type": .string("string"),
-                        "description": .string("Notification type: success, error, warning, info, celebration")
-                    ]),
-                    "message": .object([
-                        "type": .string("string"),
-                        "description": .string("Notification message")
-                    ])
-                ]),
-                "required": .array([.string("title"), .string("type")])
-            ])
-        ))
-
-        // Tool 3: 请求用户确认
-        tools.append(Tool(
-            name: "notch_ask_confirmation",
-            description: "Ask user for confirmation with custom options",
-            inputSchema: .object([
-                "type": .string("object"),
-                "properties": .object([
-                    "question": .object([
-                        "type": .string("string"),
-                        "description": .string("The question to ask the user")
-                    ]),
-                    "options": .object([
-                        "type": .string("array"),
-                        "description": .string("Array of option strings")
-                    ])
-                ]),
-                "required": .array([.string("question"), .string("options")])
-            ])
-        ))
-
-        // Tool 4: 显示可操作的结果通知（阻塞式交互）
+        // Tool 1: 交互式通知 - 显示按钮并等待用户选择
         tools.append(Tool(
             name: "notch_show_actionable_result",
-            description: "Show an actionable notification with buttons, waits for user click (max 50s timeout)",
+            description: """
+            Display an interactive notification with action buttons in the MacBook notch area.
+            This tool BLOCKS and WAITS for user to click a button (up to 50 seconds timeout).
+            Use this when you need the user to make a choice or confirm an action.
+            Returns the label of the button the user clicked.
+            """,
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "title": .object([
                         "type": .string("string"),
-                        "description": .string("Notification title")
+                        "description": .string("Short notification title (e.g., 'Confirm Action', 'Choose Option')")
                     ]),
                     "message": .object([
                         "type": .string("string"),
-                        "description": .string("Notification message")
+                        "description": .string("Brief message explaining what user needs to choose (1-2 sentences)")
                     ]),
                     "type": .object([
                         "type": .string("string"),
-                        "description": .string("Notification type: success, error, warning, info")
+                        "description": .string("Visual style: 'success', 'error', 'warning', or 'info'")
                     ]),
                     "actions": .object([
                         "type": .string("array"),
-                        "description": .string("Array of action button labels (max 3)")
+                        "description": .string("Array of button labels (max 3). Use clear, actionable text like '确认', '取消', '查看详情'")
                     ])
                 ]),
                 "required": .array([.string("title"), .string("message"), .string("actions")])
+            ])
+        ))
+
+        // Tool 2: Session总结 - 生成并显示工作总结
+        tools.append(Tool(
+            name: "notch_show_summary",
+            description: """
+            Generate and display a session summary for the current work session.
+            Opens a dedicated window showing completed tasks, modified files, key decisions, and statistics.
+            User can save the summary as a Markdown file to their project's docs folder.
+            Use this at the end of a major task or when user asks for a summary.
+            """,
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object([
+                    "project_name": .object([
+                        "type": .string("string"),
+                        "description": .string("Name of the project (e.g., 'DynamicNotch', 'MyApp')")
+                    ]),
+                    "task_description": .object([
+                        "type": .string("string"),
+                        "description": .string("Brief description of what was accomplished in this session (2-3 sentences)")
+                    ]),
+                    "completed_tasks": .object([
+                        "type": .string("array"),
+                        "description": .string("Array of completed task descriptions (e.g., '添加MCP工具', '实现总结窗口UI')")
+                    ]),
+                    "pending_tasks": .object([
+                        "type": .string("array"),
+                        "description": .string("Array of remaining tasks or next steps")
+                    ]),
+                    "modified_files": .object([
+                        "type": .string("array"),
+                        "description": .string("Array of file paths that were created or modified (e.g., 'NotchNoti/SessionSummary.swift')")
+                    ]),
+                    "key_decisions": .object([
+                        "type": .string("array"),
+                        "description": .string("Array of important technical decisions made (e.g., 'Used file-based IPC for cross-process communication')")
+                    ]),
+                    "issues": .object([
+                        "type": .string("array"),
+                        "description": .string("Array of issue objects with 'title', 'description', and optional 'solution' fields")
+                    ]),
+                    "project_path": .object([
+                        "type": .string("string"),
+                        "description": .string("Absolute path to project directory (used for default save location)")
+                    ])
+                ]),
+                "required": .array([.string("project_name"), .string("task_description")])
             ])
         ))
     }
@@ -237,109 +223,15 @@ class NotchMCPServer {
 
     private func handleToolCall(_ params: CallTool.Parameters) async throws -> CallTool.Result {
         switch params.name {
-        case "notch_show_progress":
-            return try await handleShowProgress(params.arguments)
-
-        case "notch_show_result":
-            return try await handleShowResult(params.arguments)
-
-        case "notch_ask_confirmation":
-            return try await handleAskConfirmation(params.arguments)
-
         case "notch_show_actionable_result":
             return try await handleShowActionableResult(params.arguments)
+
+        case "notch_show_summary":
+            return try await handleShowSummary(params.arguments)
 
         default:
             throw MCPError.unknownTool(params.name)
         }
-    }
-
-    private func handleShowProgress(_ arguments: [String: Value]?) async throws -> CallTool.Result {
-        guard let args = arguments else {
-            throw MCPError.missingArguments
-        }
-
-        let title = args["title"]?.stringValue ?? "Progress"
-        let progress = args["progress"]?.numberValue ?? 0.0
-        let cancellable = args["cancellable"]?.boolValue ?? false
-
-        // 创建进度通知
-        let notification = NotchNotification(
-            title: title,
-            message: "Progress: \(Int(progress * 100))%",
-            type: .progress,
-            priority: .normal,
-            metadata: [
-                "progress": "\(progress)",
-                "cancellable": "\(cancellable)",
-                "source": "mcp"
-            ]
-        )
-
-        // 通过 Unix Socket 发送通知到 GUI 进程
-        sendNotificationViaSocket(notification)
-
-        return CallTool.Result(
-            content: [.text("Progress notification displayed: \(title) at \(Int(progress * 100))%")]
-        )
-    }
-
-    private func handleShowResult(_ arguments: [String: Value]?) async throws -> CallTool.Result {
-        guard let args = arguments else {
-            throw MCPError.missingArguments
-        }
-
-        let title = args["title"]?.stringValue ?? "Result"
-        let typeStr = args["type"]?.stringValue ?? "info"
-        let message = args["message"]?.stringValue ?? ""
-
-        // 映射类型
-        let notificationType: NotchNotification.NotificationType = switch typeStr {
-        case "success": .success
-        case "error": .error
-        case "warning": .warning
-        case "celebration": .celebration
-        default: .info
-        }
-
-        let notification = NotchNotification(
-            title: title,
-            message: message,
-            type: notificationType,
-            priority: .high,
-            metadata: ["source": "mcp"]
-        )
-
-        sendNotificationViaSocket(notification)
-
-        return CallTool.Result(
-            content: [.text("Result notification displayed: \(title)")]
-        )
-    }
-
-    private func handleAskConfirmation(_ arguments: [String: Value]?) async throws -> CallTool.Result {
-        guard let args = arguments else {
-            throw MCPError.missingArguments
-        }
-
-        let question = args["question"]?.stringValue ?? "Confirm?"
-
-        // TODO: 实现真正的用户交互
-        // 目前先返回模拟结果
-
-        let notification = NotchNotification(
-            title: "Confirmation Required",
-            message: question,
-            type: .reminder,
-            priority: .urgent,
-            metadata: ["source": "mcp", "interactive": "true"]
-        )
-
-        sendNotificationViaSocket(notification)
-
-        return CallTool.Result(
-            content: [.text("Confirmation prompt displayed. User response: pending")]
-        )
     }
 
     private func handleShowActionableResult(_ arguments: [String: Value]?) async throws -> CallTool.Result {
@@ -433,6 +325,111 @@ class NotchMCPServer {
             content: [.text("timeout")],
             isError: false
         )
+    }
+
+    private func handleShowSummary(_ arguments: [String: Value]?) async throws -> CallTool.Result {
+        guard let args = arguments else {
+            throw MCPError.missingArguments
+        }
+
+        print("[MCP] Handling show summary request")
+
+        // 解析参数
+        let projectName = args["project_name"]?.stringValue ?? "Unknown Project"
+        let taskDescription = args["task_description"]?.stringValue ?? ""
+        let projectPath = args["project_path"]?.stringValue
+
+        // 解析数组参数
+        let completedTasks = parseStringArray(args["completed_tasks"])
+        let pendingTasks = parseStringArray(args["pending_tasks"])
+        let keyDecisions = parseStringArray(args["key_decisions"])
+        let modifiedFilesRaw = parseStringArray(args["modified_files"])
+        let issuesRaw = parseDictArray(args["issues"])
+
+        // 转换为模型
+        let modifiedFiles = modifiedFilesRaw.map { path in
+            FileModification(path: path, modificationType: .modified, description: nil)
+        }
+
+        let issues = issuesRaw.map { dict in
+            Issue(
+                title: dict["title"] as? String ?? "Issue",
+                description: dict["description"] as? String ?? "",
+                solution: dict["solution"] as? String
+            )
+        }
+
+        // 创建临时session或使用现有session（MCP进程无法访问GUI进程的StatisticsManager）
+        // 创建一个包含基本信息的临时session
+        let tempSession = WorkSession(projectName: projectName)
+
+        // 创建总结
+        let summary = SessionSummaryManager.shared.createSummary(
+            from: tempSession,
+            taskDescription: taskDescription,
+            completedTasks: completedTasks,
+            pendingTasks: pendingTasks,
+            modifiedFiles: modifiedFiles,
+            keyDecisions: keyDecisions,
+            issues: issues
+        )
+
+        // 将总结数据编码为JSON字符串，通过socket发送到GUI
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+
+        var summaryJSON = ""
+        if let jsonData = try? encoder.encode(summary),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            summaryJSON = jsonString
+        }
+
+        let notification = NotchNotification(
+            title: "📋 Session总结已生成",
+            message: projectName,
+            type: .success,
+            priority: .high,
+            metadata: [
+                "source": "mcp",
+                "summary_id": summary.id.uuidString,
+                "summary_data": summaryJSON,
+                "project_path": projectPath ?? ""
+            ]
+        )
+
+        sendNotificationViaSocket(notification)
+
+        return CallTool.Result(
+            content: [.text("Session summary generated. Notification sent to GUI. Summary ID: \(summary.id.uuidString)")]
+        )
+    }
+
+    // Helper: 解析字符串数组
+    private func parseStringArray(_ value: Value?) -> [String] {
+        guard case .array(let items) = value else { return [] }
+        return items.compactMap { item in
+            if case .string(let str) = item {
+                return str
+            }
+            return nil
+        }
+    }
+
+    // Helper: 解析字典数组
+    private func parseDictArray(_ value: Value?) -> [[String: Any]] {
+        guard case .array(let items) = value else { return [] }
+        return items.compactMap { item in
+            if case .object(let dict) = item {
+                var result: [String: Any] = [:]
+                for (key, val) in dict {
+                    if case .string(let strVal) = val {
+                        result[key] = strVal
+                    }
+                }
+                return result
+            }
+            return nil
+        }
     }
 
     // MARK: - Resource Handlers

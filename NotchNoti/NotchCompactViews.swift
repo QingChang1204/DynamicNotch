@@ -610,3 +610,141 @@ extension ActivityType {
         }
     }
 }
+
+// MARK: - Session总结列表 - 紧凑纵向列表
+
+struct CompactSummaryListView: View {
+    @ObservedObject var manager = SessionSummaryManager.shared
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            VStack(spacing: 0) {
+                // 顶部栏：关闭按钮
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        NotchViewModel.shared?.returnToNormal()
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.4))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+
+                if manager.recentSummaries.isEmpty {
+                    emptyState
+                } else {
+                    ScrollView(showsIndicators: false) {
+                        LazyVStack(spacing: 1) {
+                            ForEach(manager.recentSummaries) { summary in
+                                CompactSummaryRow(summary: summary)
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 4)
+                        .padding(.bottom, 8)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "doc.text.fill")
+                .font(.system(size: 32))
+                .foregroundColor(.white.opacity(0.3))
+            Text("暂无总结")
+                .font(.system(size: 13))
+                .foregroundColor(.white.opacity(0.5))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - 紧凑总结行
+
+struct CompactSummaryRow: View {
+    let summary: SessionSummary
+
+    var body: some View {
+        Button(action: {
+            // 打开总结窗口
+            SummaryWindowController.shared.showSummary(summary, projectPath: nil)
+
+            // 延迟关闭notch，避免与新窗口的渲染冲突
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                NotchViewModel.shared?.notchClose()
+            }
+        }) {
+            HStack(spacing: 10) {
+                // 左侧：图标和项目信息
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "doc.text.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.blue)
+
+                        Text(summary.projectName)
+                            .font(.system(size: 11, weight: .semibold))
+                            .lineLimit(1)
+                    }
+
+                    Text(summary.taskDescription.isEmpty ? "无描述" : summary.taskDescription)
+                        .font(.system(size: 10))
+                        .foregroundColor(.white.opacity(0.6))
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 0)
+
+                // 右侧：时间和统计
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(timeAgo(summary.startTime))
+                        .font(.system(size: 9, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundColor(.white.opacity(0.5))
+
+                    HStack(spacing: 4) {
+                        if !summary.completedTasks.isEmpty {
+                            Text("\(summary.completedTasks.count)✓")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(.green)
+                        }
+                        if !summary.modifiedFiles.isEmpty {
+                            Text("\(summary.modifiedFiles.count)📄")
+                                .font(.system(size: 9))
+                                .foregroundColor(.orange)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(Color.white.opacity(0.05))
+            .cornerRadius(6)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private func timeAgo(_ date: Date) -> String {
+        let interval = Date().timeIntervalSince(date)
+        let minutes = Int(interval / 60)
+        let hours = Int(interval / 3600)
+        let days = Int(interval / 86400)
+
+        if days > 0 {
+            return "\(days)天前"
+        } else if hours > 0 {
+            return "\(hours)小时前"
+        } else if minutes > 0 {
+            return "\(minutes)分钟前"
+        } else {
+            return "刚刚"
+        }
+    }
+}

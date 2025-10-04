@@ -8,7 +8,9 @@
       "Read(//Users/liuqingchang/Library/Developer/Xcode/DerivedData/**)",
       "Bash(cat:*)",
       "mcp__notchnoti__notch_show_result",
-      "mcp__notchnoti__notch_show_actionable_result"
+      "mcp__notchnoti__notch_show_actionable_result",
+      "mcp__notchnoti__notch_ask_confirmation",
+      "mcp__notchnoti__notch_show_summary"
     ]
   },
   "hooks": {

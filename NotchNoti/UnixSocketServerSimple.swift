@@ -112,15 +112,21 @@ class UnixSocketServerSimple: ObservableObject {
     
     private func acceptConnections() {
         while isListening {
+            // 检查serverSocket是否有效
+            guard serverSocket >= 0 else {
+                print("[UnixSocket] Server socket invalid, stopping accept loop")
+                break
+            }
+
             var clientAddr = sockaddr_un()
             var clientAddrLen = socklen_t(MemoryLayout<sockaddr_un>.size)
-            
+
             let clientSocket = withUnsafeMutablePointer(to: &clientAddr) { ptr in
                 ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
                     accept(serverSocket, sockaddrPtr, &clientAddrLen)
                 }
             }
-            
+
             if clientSocket < 0 {
                 if isListening {
                     print("[UnixSocket] Accept error: \(String(cString: strerror(errno)))")
@@ -180,6 +186,12 @@ class UnixSocketServerSimple: ObservableObject {
                 // 处理统计信息
                 if let metadata = notification.metadata {
                     self.processStatistics(metadata: metadata)
+
+                    // 处理总结数据
+                    if let summaryJSON = metadata["summary_data"],
+                       let summaryData = summaryJSON.data(using: .utf8) {
+                        self.processSummaryData(summaryData)
+                    }
                 }
 
                 NotificationManager.shared.addNotification(notchNotification)
@@ -237,6 +249,32 @@ class UnixSocketServerSimple: ObservableObject {
 
         default:
             break
+        }
+    }
+
+    private func processSummaryData(_ data: Data) {
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+
+            let summary = try decoder.decode(SessionSummary.self, from: data)
+
+            // 添加到SessionSummaryManager
+            DispatchQueue.main.async {
+                // 检查是否已存在（避免重复）
+                if !SessionSummaryManager.shared.recentSummaries.contains(where: { $0.id == summary.id }) {
+                    SessionSummaryManager.shared.recentSummaries.insert(summary, at: 0)
+
+                    // 保持最多5条
+                    if SessionSummaryManager.shared.recentSummaries.count > 5 {
+                        SessionSummaryManager.shared.recentSummaries = Array(SessionSummaryManager.shared.recentSummaries.prefix(5))
+                    }
+
+                    print("[UnixSocket] Summary added to manager: \(summary.projectName)")
+                }
+            }
+        } catch {
+            print("[UnixSocket] Failed to decode summary data: \(error)")
         }
     }
 }

@@ -51,6 +51,7 @@ class NotchViewModel: NSObject, ObservableObject {
         case history
         case stats
         case aiAnalysis
+        case summaryHistory
     }
 
     var notchOpenedRect: CGRect {
@@ -115,6 +116,10 @@ class NotchViewModel: NSObject, ObservableObject {
 
     func showAIAnalysis() {
         contentType = .aiAnalysis
+    }
+
+    func showSummaryHistory() {
+        contentType = .summaryHistory
     }
 
     func notchPop() {

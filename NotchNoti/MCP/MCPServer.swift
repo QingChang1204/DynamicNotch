@@ -132,14 +132,34 @@ class NotchMCPServer {
             ])
         )
 
-        await server.withTools([progressTool, resultTool, confirmTool])
+        // Tool 4: 显示Session总结
+        let summaryTool = Tool(
+            name: "notch_show_summary",
+            description: "Display a session summary with save options",
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object([
+                    "project_name": .string("string"),
+                    "task_description": .string("string"),
+                    "completed_tasks": .string("array"),
+                    "pending_tasks": .string("array"),
+                    "modified_files": .string("array"),
+                    "key_decisions": .string("array"),
+                    "issues": .string("array"),
+                    "project_path": .string("string")
+                ]),
+                "required": .array([.string("project_name"), .string("task_description")])
+            ])
+        )
+
+        await server.withTools([progressTool, resultTool, confirmTool, summaryTool])
 
         // 注册工具处理器
         await server.withMethodHandler(CallTool.self) { [weak self] params in
             return try await self?.handleToolCall(params) ?? CallTool.Result(content: [])
         }
 
-        print("[MCP] Registered \(3) tools")
+        print("[MCP] Registered \(4) tools")
     }
 
     // MARK: - Resource Registration
@@ -204,6 +224,9 @@ class NotchMCPServer {
 
         case "notch_ask_confirmation":
             return try await handleAskConfirmation(params.arguments)
+
+        case "notch_show_summary":
+            return try await handleShowSummary(params.arguments)
 
         default:
             throw MCPError.unknownTool(params.name)
@@ -296,6 +319,126 @@ class NotchMCPServer {
         return CallTool.Result(
             content: [.text("Confirmation prompt displayed. User response: pending")]
         )
+    }
+
+    private func handleShowSummary(_ arguments: [String: JSONValue]?) async throws -> CallTool.Result {
+        guard let args = arguments else {
+            throw MCPError.missingArguments
+        }
+
+        print("[MCP] Handling show summary request")
+
+        // 解析参数
+        let projectName = args["project_name"]?.stringValue ?? "Unknown Project"
+        let taskDescription = args["task_description"]?.stringValue ?? ""
+        let projectPath = args["project_path"]?.stringValue
+
+        // 解析数组参数
+        let completedTasks = parseStringArray(args["completed_tasks"])
+        let pendingTasks = parseStringArray(args["pending_tasks"])
+        let keyDecisions = parseStringArray(args["key_decisions"])
+        let modifiedFilesRaw = parseStringArray(args["modified_files"])
+        let issuesRaw = parseDictArray(args["issues"])
+
+        // 转换为模型
+        let modifiedFiles = modifiedFilesRaw.map { path in
+            FileModification(path: path, modificationType: .modified, description: nil)
+        }
+
+        let issues = issuesRaw.map { dict in
+            Issue(
+                title: dict["title"] as? String ?? "Issue",
+                description: dict["description"] as? String ?? "",
+                solution: dict["solution"] as? String
+            )
+        }
+
+        // 获取当前session
+        guard let currentSession = StatisticsManager.shared.currentSession else {
+            // 如果没有当前session，创建一个临时session
+            let tempSession = WorkSession(projectName: projectName)
+            return try await createAndShowSummary(
+                session: tempSession,
+                taskDescription: taskDescription,
+                completedTasks: completedTasks,
+                pendingTasks: pendingTasks,
+                modifiedFiles: modifiedFiles,
+                keyDecisions: keyDecisions,
+                issues: issues,
+                projectPath: projectPath
+            )
+        }
+
+        // 使用当前session创建总结
+        return try await createAndShowSummary(
+            session: currentSession,
+            taskDescription: taskDescription,
+            completedTasks: completedTasks,
+            pendingTasks: pendingTasks,
+            modifiedFiles: modifiedFiles,
+            keyDecisions: keyDecisions,
+            issues: issues,
+            projectPath: projectPath
+        )
+    }
+
+    private func createAndShowSummary(
+        session: WorkSession,
+        taskDescription: String,
+        completedTasks: [String],
+        pendingTasks: [String],
+        modifiedFiles: [FileModification],
+        keyDecisions: [String],
+        issues: [Issue],
+        projectPath: String?
+    ) async throws -> CallTool.Result {
+        // 创建总结
+        let summary = SessionSummaryManager.shared.createSummary(
+            from: session,
+            taskDescription: taskDescription,
+            completedTasks: completedTasks,
+            pendingTasks: pendingTasks,
+            modifiedFiles: modifiedFiles,
+            keyDecisions: keyDecisions,
+            issues: issues
+        )
+
+        // 在主线程打开总结窗口
+        await MainActor.run {
+            SummaryWindowController.shared.showSummary(summary, projectPath: projectPath)
+        }
+
+        return CallTool.Result(
+            content: [.text("Session summary displayed. Window opened for user review.")]
+        )
+    }
+
+    // Helper: 解析字符串数组
+    private func parseStringArray(_ value: JSONValue?) -> [String] {
+        guard case .array(let items) = value else { return [] }
+        return items.compactMap { item in
+            if case .string(let str) = item {
+                return str
+            }
+            return nil
+        }
+    }
+
+    // Helper: 解析字典数组
+    private func parseDictArray(_ value: JSONValue?) -> [[String: Any]] {
+        guard case .array(let items) = value else { return [] }
+        return items.compactMap { item in
+            if case .object(let dict) = item {
+                var result: [String: Any] = [:]
+                for (key, val) in dict {
+                    if case .string(let strVal) = val {
+                        result[key] = strVal
+                    }
+                }
+                return result
+            }
+            return nil
+        }
     }
 
     // MARK: - Resource Handlers

@@ -44,6 +44,14 @@ struct NotchMenuView: View {
             }
 
             Button(action: {
+                vm.showSummaryHistory()
+            }) {
+                Label("总结历史", systemImage: "doc.text.fill")
+            }
+
+            Divider()
+
+            Button(action: {
                 let result = ClaudeCodeSetup.shared.setupClaudeCodeHooks()
                 ClaudeCodeSetup.shared.showSetupResult(result)
                 if result.success {

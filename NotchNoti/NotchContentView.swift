@@ -42,6 +42,9 @@ struct NotchContentView: View {
                 case .aiAnalysis:
                     CompactAIAnalysisView()
                         .transition(AnyTransition.scale(scale: 0.8).combined(with: .opacity))
+                case .summaryHistory:
+                    CompactSummaryListView()
+                        .transition(AnyTransition.scale(scale: 0.8).combined(with: .opacity))
                 }
             }
         }
