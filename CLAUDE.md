@@ -26,70 +26,44 @@ xcodebuild -scheme NotchNoti -configuration Debug build
 
 ### Create DMG Distribution Package
 
-**CRITICAL**: There are two DMG build scenarios:
-
-#### Option 1: Quick Build (No Rust Changes) - RECOMMENDED
-If you **have NOT modified** the Rust hook code, use the automated script:
+**RECOMMENDED**: Use the automated build script for all DMG creation.
 
 ```bash
 ./build-dmg-signed.sh
 ```
 
-This script:
-- Uses the existing `notch-hook` binary already in the project
-- Builds the Swift app in Release configuration
-- Signs both the hook and the app bundle
-- Creates and signs the DMG file
-- Output: `build/NotchNoti-1.0.0-Signed.dmg`
+**What the script does automatically**:
+1. Auto-detects signing certificates (tries Developer ID > Apple Distribution > Apple Development)
+2. Builds Swift app in Release configuration
+3. Copies and signs the `notch-hook` binary (if present in project root)
+4. Signs the entire app bundle
+5. Creates a DMG with README
+6. Signs the DMG file
+7. Outputs to: `build/NotchNoti-<version>-<timestamp>.dmg`
 
-#### Option 2: Full Rebuild (Rust Code Changed)
-If you **have modified** `.claude/hooks/rust-hook/src/main.rs`, rebuild manually:
+**When Rust hook code was modified**:
+If you changed `.claude/hooks/rust-hook/src/main.rs`, rebuild the hook first:
 
 ```bash
-# 1. Build the Rust hook first
+# 1. Build new Rust hook
 cd .claude/hooks/rust-hook
 cargo build --release
 
-# 2. Copy new hook to project root (where build script expects it)
+# 2. Copy to project root (where build script expects it)
 cp target/release/notch-hook ../../notch-hook
 
-# 3. Run the build script
+# 3. Run the automated build script
 cd ../..
 ./build-dmg-signed.sh
 ```
 
-**Alternative manual steps** (if script unavailable):
-```bash
-# 1. Build Release app
-xcodebuild -scheme NotchNoti -configuration Release build
-
-# 2. Copy hook to Release app bundle
-cp notch-hook \
-   ~/Library/Developer/Xcode/DerivedData/NotchNoti-*/Build/Products/Release/NotchNoti.app/Contents/MacOS/
-
-# 3. Sign everything
-/usr/bin/codesign --force --sign "Developer ID Application: <NAME> (<TEAM_ID>)" \
-   -o runtime \
-   ~/Library/Developer/Xcode/DerivedData/NotchNoti-*/Build/Products/Release/NotchNoti.app/Contents/MacOS/notch-hook
-
-/usr/bin/codesign --force --deep --sign "Developer ID Application: <NAME> (<TEAM_ID>)" \
-   -o runtime \
-   ~/Library/Developer/Xcode/DerivedData/NotchNoti-*/Build/Products/Release/NotchNoti.app
-
-# 4. Create and sign DMG
-hdiutil create -volname "NotchNoti" \
-   -srcfolder ~/Library/Developer/Xcode/DerivedData/NotchNoti-*/Build/Products/Release/NotchNoti.app \
-   -ov -format UDZO build/NotchNoti-1.0.0-Signed.dmg
-
-/usr/bin/codesign --force --sign "Developer ID Application: <NAME> (<TEAM_ID>)" \
-   build/NotchNoti-1.0.0-Signed.dmg
-```
-
-**Key Points**:
-- ✅ **Default**: Use `build-dmg-signed.sh` script unless you changed Rust code
-- 🦀 **Rust modified**: Rebuild hook with Cargo, then run build script
-- 🔑 Code signing requires the hook to be signed first, then the app bundle
-- 🛠️ Using `/usr/bin/codesign` avoids conflicts with conda/homebrew versions
+**Script features**:
+- ✅ Automatic certificate selection
+- ✅ Graceful handling if hook binary is missing
+- ✅ Timestamped output files
+- ✅ Signs with hardened runtime (`-o runtime`)
+- ✅ Uses `/usr/bin/codesign` to avoid conda/homebrew conflicts
+- ✅ Creates compressed UDZO DMG format
 
 ## Project Structure
 
@@ -201,11 +175,12 @@ NotchNoti/
 - **NotificationManager**: Singleton managing notification lifecycle
   - Smart notification queue with priority-based insertion (max 10 queued)
   - LRU cache for UI display (max 50 items in memory)
-  - Persistent storage for analysis (max 1000 items in UserDefaults)
+  - Persistent storage for analysis (max 5000 items in UserDefaults with batch saving)
   - Notification merging within 0.5s time window for same source
   - Auto-calculated display duration based on priority and content length
   - System sound playback per notification type
   - Weak timer references to avoid memory leaks
+  - 100ms debounce timer for batch saving to prevent I/O blocking
 
 **Communication Servers**
 - `UnixSocketServerSimple.swift`: **Primary notification receiver** (BSD socket)
@@ -308,7 +283,7 @@ NotchNoti/
 7. **Display**: Manager opens notch via `NotchViewModel`, updates `currentNotification`
 8. **Sound**: Plays type-specific system sound if enabled
 9. **Animation**: `NotificationView` renders with type-specific effects
-10. **Dual Storage**: Saves to memory cache (50) and persistent storage (1000)
+10. **Dual Storage**: Saves to memory cache (50) and persistent storage (5000, batch-saved)
 11. **Statistics**: Both `StatisticsManager` and `NotificationStatsManager` record data
 12. **Lifecycle**: Auto-hide timer based on priority, then show next queued notification
 
@@ -350,7 +325,7 @@ Each type has unique animations defined in `NotificationEffects.swift`:
 - Persisted settings: language selection, haptic feedback, notification sound
 - Dual-layer notification storage:
   - Memory layer: 50 items for UI display (fast, prevents lag)
-  - Persistent layer: 1000 items for analytics (complete history)
+  - Persistent layer: 5000 items for analytics (complete history, with batch saving)
 - Statistics storage: 20 work sessions in UserDefaults
 - PID file at `temporaryDirectory/notchnoti.pid`
 
