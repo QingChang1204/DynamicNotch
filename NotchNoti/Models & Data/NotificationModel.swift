@@ -228,6 +228,12 @@ class NotificationManager: ObservableObject {
         addToHistory(notification)
         NotificationStatsManager.shared.recordNotification(notification)
 
+        // 检查配置：是否应该显示此通知
+        if !NotificationConfigManager.shared.shouldShowNotification(notification) {
+            print("[NotificationManager] 配置检查: 通知被过滤 - \(notification.title)")
+            return
+        }
+
         // 检查用户是否正在浏览其他页面（非主页内容）
         let userIsViewingOtherContent = NotchViewModel.shared?.contentType != .normal &&
                                         NotchViewModel.shared?.contentType != .menu
@@ -360,13 +366,25 @@ class NotificationManager: ObservableObject {
         if NotchViewModel.shared?.notificationSound == true {
             playNotificationSound(for: notification)
         }
-        
+
+        // 触发触觉反馈（基于配置）
+        if NotificationConfigManager.shared.shouldPlayHaptic(for: notification),
+           NotchViewModel.shared?.hapticFeedback == true {
+            NotchViewModel.shared?.hapticSender.send()
+        }
+
         // 根据优先级和内容长度计算显示时间
         let calculatedDuration = duration ?? calculateDisplayDuration(for: notification)
         startHideTimer(duration: calculatedDuration)
     }
     
     private func playNotificationSound(for notification: NotchNotification) {
+        // 检查配置：是否应该播放声音
+        guard NotificationConfigManager.shared.shouldPlaySound(for: notification) else {
+            print("[NotificationManager] 配置检查: 声音被禁用")
+            return
+        }
+
         // 根据通知类型播放不同的系统声音
         let soundName: NSSound.Name? = switch notification.type {
         case .success:
@@ -395,29 +413,27 @@ class NotificationManager: ObservableObject {
     }
     
     private func calculateDisplayDuration(for notification: NotchNotification) -> TimeInterval {
-        var duration = displayDuration
-        
+        // 优先使用配置管理器的时长
+        let configDuration = NotificationConfigManager.shared.getDuration(for: notification)
+
+        // 如果配置了自定义时长，直接使用
+        let typeConfig = NotificationConfigManager.shared.getTypeConfig(for: notification.type)
+        if typeConfig.customDuration != nil {
+            return configDuration
+        }
+
+        // 否则，使用动态计算（基于配置的默认时长）
+        var duration = configDuration
+
         // 如果有 diff 信息，延长显示时间
         if notification.metadata?["diff_path"] != nil {
             duration = 2.0  // diff 通知显示更久
-        } else {
-            // 根据优先级调整
-            switch notification.priority {
-            case .urgent:
-                duration = 2.0
-            case .high:
-                duration = 1.5
-            case .normal:
-                duration = 1.0
-            case .low:
-                duration = 0.8
-            }
         }
-        
+
         // 根据消息长度调整（每50字符增加0.5秒）
         let extraTime = Double(notification.message.count / 50) * 0.5
         duration += min(extraTime, 2.0) // 最多额外2秒
-        
+
         return duration
     }
     

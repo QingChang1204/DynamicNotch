@@ -44,6 +44,12 @@ struct NotchMenuView: View {
             }
 
             Button(action: {
+                NotificationConfigWindowManager.shared.show()
+            }) {
+                Label("消息配置", systemImage: "slider.horizontal.3")
+            }
+
+            Button(action: {
                 vm.showSummaryHistory()
             }) {
                 Label("总结历史", systemImage: "doc.text.fill")

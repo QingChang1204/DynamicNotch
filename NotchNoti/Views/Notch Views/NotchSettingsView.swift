@@ -24,15 +24,23 @@ struct NotchSettingsView: View {
                 .frame(width: vm.selectedLanguage == .simplifiedChinese || vm.selectedLanguage == .traditionalChinese ? 220 : 160)
 
                 Spacer()
+
                 LaunchAtLogin.Toggle {
                     Text("开机启动")
                 }
 
                 Spacer()
-                Toggle("触觉反馈", isOn: $vm.hapticFeedback)
-                
-                Spacer()
-                Toggle("通知声音", isOn: $vm.notificationSound)
+
+                Button(action: {
+                    NotificationConfigWindowManager.shared.show()
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "slider.horizontal.3")
+                        Text("消息配置")
+                    }
+                    .font(.system(size: 13, weight: .medium))
+                }
+                .buttonStyle(.bordered)
 
                 Spacer()
             }
