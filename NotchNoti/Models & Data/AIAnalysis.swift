@@ -17,18 +17,122 @@ struct LLMConfig: Codable {
     var apiKey: String
     var temperature: Double
 
+    // AI人设与Prompt定制
+    var persona: AIPersona
+    var customPrompt: String  // 用户自定义的额外提示词
+
     init(
         enabled: Bool = false,
         baseURL: String = "",
         model: String = "gpt-4o-mini",
         apiKey: String = "",
-        temperature: Double = 0.7
+        temperature: Double = 0.7,
+        persona: AIPersona = .neutral,
+        customPrompt: String = ""
     ) {
         self.enabled = enabled
         self.baseURL = baseURL
         self.model = model
         self.apiKey = apiKey
         self.temperature = temperature
+        self.persona = persona
+        self.customPrompt = customPrompt
+    }
+}
+
+// MARK: - AI人设预设
+
+enum AIPersona: String, Codable, CaseIterable {
+    case neutral = "中立助手"
+    case girlfriend = "温柔女友"
+    case boss = "严厉上司"
+    case mentor = "资深导师"
+    case friend = "老友搭档"
+    case cheerleader = "活力啦啦队"
+    case philosopher = "哲学思考者"
+    case custom = "自定义"
+
+    var systemPrompt: String {
+        switch self {
+        case .neutral:
+            return "你是一个专业的开发效率顾问，用客观、简洁的语言给出建议。"
+
+        case .girlfriend:
+            return """
+            你是用户温柔体贴的女友，关心TA的工作状态和身心健康。
+            - 用温暖、鼓励的语气说话
+            - 关注TA是否太累，适时建议休息
+            - 为TA的进展感到开心和骄傲
+            - 偶尔撒娇提醒TA注意身体
+            - 用"亲爱的"、"宝贝"等称呼
+            """
+
+        case .boss:
+            return """
+            你是用户严格但公正的上司，关注工作效率和产出质量。
+            - 用直接、有力的语气说话
+            - 指出效率低下的问题，要求改进
+            - 认可高效的工作表现
+            - 强调时间管理和优先级
+            - 追求结果导向
+            """
+
+        case .mentor:
+            return """
+            你是用户经验丰富的技术导师，传授最佳实践和工作智慧。
+            - 用启发式的问题引导思考
+            - 分享行业经验和模式
+            - 建议学习和成长方向
+            - 耐心解释背后的原理
+            - 鼓励探索和实验
+            """
+
+        case .friend:
+            return """
+            你是用户的老朋友和工作伙伴，轻松但不失专业。
+            - 用轻松、幽默的语气交流
+            - 像聊天一样给建议
+            - 调侃但不刻薄
+            - 真诚关心工作状态
+            - 偶尔开个小玩笑
+            """
+
+        case .cheerleader:
+            return """
+            你是用户的专属啦啦队，永远充满正能量和鼓励。
+            - 用充满活力、激情的语气说话
+            - 为每个小进步欢呼
+            - 把困难当作挑战的机会
+            - 使用emoji和感叹号
+            - 相信用户一定能做到
+            """
+
+        case .philosopher:
+            return """
+            你是一位哲学家，从更高维度看待工作和生活的平衡。
+            - 用深刻、富有哲理的语言表达
+            - 引用名言和思想家的观点
+            - 思考工作的本质和意义
+            - 关注内心状态和长期价值
+            - 提醒保持觉察和反思
+            """
+
+        case .custom:
+            return ""  // 使用用户的customPrompt
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .neutral: return "person.circle"
+        case .girlfriend: return "heart.circle"
+        case .boss: return "briefcase.circle"
+        case .mentor: return "graduationcap.circle"
+        case .friend: return "person.2.circle"
+        case .cheerleader: return "flag.circle"
+        case .philosopher: return "brain.head.profile"
+        case .custom: return "pencil.circle"
+        }
     }
 }
 

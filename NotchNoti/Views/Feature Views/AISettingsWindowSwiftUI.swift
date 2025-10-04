@@ -240,6 +240,61 @@ struct AISettingsWindowView: View {
                 Slider(value: $config.temperature, in: 0...2, step: 0.1)
                     .tint(.purple)
             }
+
+            Divider()
+                .background(Color.white.opacity(0.1))
+
+            // AI人设选择
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: config.persona.icon)
+                        .font(.system(size: 14))
+                        .foregroundColor(.pink.opacity(0.8))
+                        .frame(width: 20)
+
+                    Text("AI 人设")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.white.opacity(0.9))
+                }
+
+                Picker("", selection: $config.persona) {
+                    ForEach(AIPersona.allCases, id: \.self) { persona in
+                        HStack {
+                            Image(systemName: persona.icon)
+                            Text(persona.rawValue)
+                        }
+                        .tag(persona)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            // 自定义Prompt（仅在选择"自定义"时显示）
+            if config.persona == .custom {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "pencil.line")
+                            .font(.system(size: 14))
+                            .foregroundColor(.cyan.opacity(0.8))
+                            .frame(width: 20)
+
+                        Text("自定义人设Prompt")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+
+                    MacTextViewWrapper(
+                        text: $config.customPrompt,
+                        placeholder: "例如：你是一个温柔的女友，用关心和鼓励的语气回应..."
+                    )
+                    .frame(height: 80)
+
+                    Text("提示：描述AI的角色、语气、特点")
+                        .font(.system(size: 10))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+            }
         }
     }
 
@@ -509,6 +564,102 @@ struct MacSecureFieldWrapper: NSViewRepresentable {
         func controlTextDidChange(_ notification: Notification) {
             guard let textField = notification.object as? NSSecureTextField else { return }
             parent.text = textField.stringValue
+        }
+    }
+}
+
+// MARK: - 多行文本输入框包装器
+
+struct MacTextViewWrapper: NSViewRepresentable {
+    @Binding var text: String
+    let placeholder: String
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        let textView = NSTextView()
+
+        textView.delegate = context.coordinator
+        textView.isRichText = false
+        textView.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        textView.textColor = .white
+        textView.backgroundColor = NSColor.white.withAlphaComponent(0.08)
+        textView.insertionPointColor = .white
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+
+        if text.isEmpty {
+            textView.string = ""
+            // 显示placeholder（作为临时文本）
+            textView.textStorage?.append(NSAttributedString(
+                string: placeholder,
+                attributes: [
+                    .foregroundColor: NSColor.white.withAlphaComponent(0.3),
+                    .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+                ]
+            ))
+        } else {
+            textView.string = text
+        }
+
+        scrollView.documentView = textView
+        scrollView.hasVerticalScroller = true
+        scrollView.borderType = .bezelBorder
+
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        guard let textView = scrollView.documentView as? NSTextView else { return }
+
+        if textView.string != text && text != placeholder {
+            textView.string = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, NSTextViewDelegate {
+        var parent: MacTextViewWrapper
+
+        init(_ parent: MacTextViewWrapper) {
+            self.parent = parent
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+
+            // 如果是placeholder，清除它
+            if textView.string == parent.placeholder {
+                textView.string = ""
+            }
+
+            parent.text = textView.string
+        }
+
+        func textDidBeginEditing(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+
+            // 如果是placeholder，清除它
+            if textView.string == parent.placeholder {
+                textView.string = ""
+                textView.textColor = .white
+            }
+        }
+
+        func textDidEndEditing(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+
+            // 如果为空，显示placeholder
+            if textView.string.isEmpty {
+                textView.textStorage?.setAttributedString(NSAttributedString(
+                    string: parent.placeholder,
+                    attributes: [
+                        .foregroundColor: NSColor.white.withAlphaComponent(0.3),
+                        .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+                    ]
+                ))
+            }
         }
     }
 }

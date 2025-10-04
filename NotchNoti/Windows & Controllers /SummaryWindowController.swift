@@ -157,11 +157,101 @@ struct SummaryView: View {
                 Divider()
                     .background(Color.white.opacity(0.05))
 
+                // AI洞察卡片（如果有）
+                if let insight = summary.aiInsight {
+                    aiInsightCard(insight)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
+
+                    Divider()
+                        .background(Color.white.opacity(0.05))
+                }
+
                 // Markdown内容区域
                 MarkdownTextView(text: summary.toMarkdown())
             }
         }
         .background(WindowAccessor(window: $hostingWindow))
+    }
+
+    // MARK: - AI洞察卡片
+
+    private func aiInsightCard(_ insight: WorkInsight) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // 标题
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.purple, .pink],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 32, height: 32)
+
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.white)
+                }
+
+                Text("AI 工作洞察")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.white)
+
+                Spacer()
+
+                Text(insight.type.rawValue)
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.6))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.white.opacity(0.1))
+                    .cornerRadius(4)
+            }
+
+            // 总结
+            Text(insight.summary)
+                .font(.system(size: 13))
+                .foregroundColor(.white.opacity(0.9))
+                .lineSpacing(4)
+
+            // 建议
+            if !insight.suggestions.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(insight.suggestions.indices, id: \.self) { index in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("\(index + 1).")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.cyan)
+                                .frame(width: 20, alignment: .trailing)
+
+                            Text(insight.suggestions[index])
+                                .font(.system(size: 12))
+                                .foregroundColor(.white.opacity(0.85))
+                        }
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.purple.opacity(0.1))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(
+                    LinearGradient(
+                        colors: [.purple.opacity(0.3), .pink.opacity(0.3)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        )
     }
 
     // MARK: - 顶部标题栏

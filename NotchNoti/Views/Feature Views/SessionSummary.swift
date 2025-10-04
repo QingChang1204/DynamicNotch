@@ -33,7 +33,10 @@ struct SessionSummary: Codable, Identifiable {
     // 统计数据（从WorkSession派生）
     var statistics: SessionStatistics
 
-    init(session: WorkSession, taskDescription: String = "") {
+    // AI洞察（可选）
+    var aiInsight: WorkInsight?
+
+    init(session: WorkSession, taskDescription: String = "", aiInsight: WorkInsight? = nil) {
         self.id = UUID()
         self.sessionId = session.id
         self.projectName = session.projectName
@@ -49,6 +52,7 @@ struct SessionSummary: Codable, Identifiable {
         self.issuesEncountered = []
 
         self.statistics = SessionStatistics(from: session)
+        self.aiInsight = aiInsight
     }
 
     // 生成Markdown格式
@@ -67,6 +71,22 @@ struct SessionSummary: Codable, Identifiable {
         md += "**Intensity**: \(statistics.intensity)\n\n"
 
         md += "---\n\n"
+
+        // AI洞察（如果有）
+        if let insight = aiInsight {
+            md += "## 🤖 AI 工作洞察\n\n"
+            md += "\(insight.summary)\n\n"
+
+            if !insight.suggestions.isEmpty {
+                md += "**建议**:\n"
+                for (index, suggestion) in insight.suggestions.enumerated() {
+                    md += "\(index + 1). \(suggestion)\n"
+                }
+                md += "\n"
+            }
+
+            md += "---\n\n"
+        }
 
         // Task Overview
         md += "## 📋 任务概述\n\n"

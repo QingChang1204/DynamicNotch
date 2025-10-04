@@ -166,6 +166,14 @@ class StatisticsManager: ObservableObject {
         addToHistory(session)
         currentSession = nil
         print("[Stats] 会话结束: \(session.projectName), 时长: \(Int(session.duration/60))分钟")
+
+        // 为有意义的session生成AI洞察（异步，不阻塞）
+        // 条件：超过10分钟且至少5个活动
+        if session.duration > 600 && session.totalActivities >= 5 {
+            Task {
+                _ = await WorkInsightsAnalyzer.shared.analyzeCurrentSession(session)
+            }
+        }
     }
 
     // 记录活动

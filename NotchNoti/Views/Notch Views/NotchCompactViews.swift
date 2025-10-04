@@ -332,29 +332,34 @@ struct CompactStatsView: View {
 // MARK: - AI洞察 - LLM分析
 
 struct CompactAIAnalysisView: View {
-    @ObservedObject var aiManager = AIAnalysisManager.shared
-    @ObservedObject var notifStatsManager = NotificationStatsManager.shared
+    @ObservedObject var insightsAnalyzer = WorkInsightsAnalyzer.shared
+    @ObservedObject var statsManager = StatisticsManager.shared
+
+    @State private var isAnalyzing = false
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            let summary = notifStatsManager.getSummary()
-
-            if aiManager.isAnalyzing {
+            // 主内容区
+            if isAnalyzing {
                 analyzingState
-            } else if let error = aiManager.lastError {
-                errorState(error, summary: summary)
-            } else if let analysis = aiManager.lastAnalysis {
-                resultView(analysis, summary: summary)
+            } else if let latestInsight = insightsAnalyzer.recentInsights.first {
+                insightCardView(latestInsight)
             } else {
-                initialState(summary: summary)
+                emptyState
             }
 
+            // 右上角关闭按钮
             closeButton
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black.opacity(0.15))
+        .background(Color.black.opacity(0.1))
         .onAppear {
-            aiManager.updateAvailableProjects()
+            // 视图出现时自动分析（如果还没有洞察）
+            if insightsAnalyzer.recentInsights.isEmpty && hasEnoughData {
+                Task {
+                    await analyzeCurrentSession()
+                }
+            }
         }
     }
 
@@ -369,243 +374,238 @@ struct CompactAIAnalysisView: View {
                             center: .center
                         )
                     )
-                    .frame(width: 48, height: 48)
+                    .frame(width: 40, height: 40)
                     .blur(radius: 6)
 
-                Image(systemName: "brain.head.profile")
-                    .font(.system(size: 22))
+                Image(systemName: "sparkles")
+                    .font(.system(size: 18))
                     .foregroundColor(.white)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("AI 分析中")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white)
-
-                Text("正在分析工作模式...")
-                    .font(.system(size: 10))
-                    .foregroundColor(.white.opacity(0.5))
-
-                ProgressView()
-                    .scaleEffect(0.6)
-                    .frame(height: 3)
-            }
-
-            Spacer()
-        }
-        .padding(.leading, 20)
-    }
-
-    // 错误状态
-    private func errorState(_ error: String, summary: StatsSummary) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 24))
-                .foregroundColor(.orange)
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("分析失败")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.white)
 
-                Text(error)
+                Text("正在分析工作模式...")
                     .font(.system(size: 9))
                     .foregroundColor(.white.opacity(0.5))
-                    .lineLimit(1)
 
-                Button("重试") {
-                    Task { await aiManager.analyzeNotifications(summary: summary) }
-                }
-                .font(.system(size: 9))
-                .buttonStyle(.borderless)
+                ProgressView()
+                    .scaleEffect(0.5)
+                    .frame(height: 2)
             }
 
             Spacer()
         }
-        .padding(.leading, 20)
+        .padding(.leading, 16)
     }
 
-    // 分析结果
-    private func resultView(_ analysis: String, summary: StatsSummary) -> some View {
-        HStack(spacing: 0) {
-            // 左侧：装饰性渐变条
-            RoundedRectangle(cornerRadius: 3)
-                .fill(
-                    LinearGradient(
-                        colors: [.purple, .pink],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .frame(width: 3)
-                .padding(.leading, 12)
-
-            // 主要内容
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 6) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 14))
-                        .foregroundColor(.purple)
-
-                    Text("AI 洞察")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.9))
-
-                    // 项目选择器
-                    if !aiManager.availableProjects.isEmpty {
-                        Picker("", selection: Binding(
-                            get: { aiManager.selectedProject ?? aiManager.availableProjects.first ?? "" },
-                            set: { aiManager.selectedProject = $0 }
-                        )) {
-                            ForEach(aiManager.availableProjects, id: \.self) { project in
-                                Text(project)
-                                    .font(.system(size: 9))
-                                    .tag(project)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .font(.system(size: 9))
-                        .frame(height: 16)
-                    }
-
-                    Spacer()
-                }
-
-                Text(analysis)
-                    .font(.system(size: 10))
-                    .foregroundColor(.white.opacity(0.85))
-                    .lineLimit(4)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                HStack(spacing: 8) {
-                    Button(action: {
-                        Task { await aiManager.analyzeNotifications(summary: summary) }
-                    }) {
-                        HStack(spacing: 3) {
-                            Image(systemName: "arrow.clockwise")
-                            Text("重新分析 \(aiManager.selectedProject ?? "")")
-                                .lineLimit(1)
-                        }
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundColor(.purple.opacity(0.8))
-                    }
-                    .buttonStyle(.plain)
-
-                    Button(action: {
-                        AISettingsWindowManager.shared.show()
-                    }) {
-                        HStack(spacing: 3) {
-                            Image(systemName: "gearshape")
-                            Text("设置")
-                        }
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundColor(.white.opacity(0.5))
-                    }
-                    .buttonStyle(.plain)
-
-                    Spacer()
-                }
-            }
-            .padding(.leading, 10)
-            .padding(.vertical, 12)
-            .padding(.trailing, 40)
-
-            Spacer()
-        }
-    }
-
-    // 初始状态 - 横向紧凑布局
-    private func initialState(summary: StatsSummary) -> some View {
-        HStack(spacing: 20) {
-            // 左侧图标
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [.purple.opacity(0.3), .pink.opacity(0.2)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 48, height: 48)
-                    .blur(radius: 6)
-
-                Image(systemName: "sparkles")
-                    .font(.system(size: 20))
-                    .foregroundColor(.purple)
-            }
-
-            // 右侧内容
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Text("AI 工作洞察")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.white)
-
-                    // 项目选择器
-                    if !aiManager.availableProjects.isEmpty {
-                        Picker("", selection: Binding(
-                            get: { aiManager.selectedProject ?? aiManager.availableProjects.first ?? "" },
-                            set: { aiManager.selectedProject = $0 }
-                        )) {
-                            ForEach(aiManager.availableProjects, id: \.self) { project in
-                                Text(project)
-                                    .font(.system(size: 9))
-                                    .tag(project)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .font(.system(size: 9))
-                        .frame(height: 18)
-                    }
-                }
-
-                if summary.totalCount > 0, aiManager.loadConfig() != nil {
-                    Button(action: {
-                        Task {
-                            await aiManager.analyzeNotifications(summary: summary)
-                        }
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "wand.and.stars")
-                                .font(.system(size: 9))
-                            Text("分析 \(aiManager.selectedProject ?? "项目")")
-                                .font(.system(size: 10, weight: .medium))
-                                .lineLimit(1)
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(
+    // 洞察卡片 - 横向布局优化刘海显示
+    private func insightCardView(_ insight: WorkInsight) -> some View {
+        HStack(spacing: 12) {
+            // 左侧：图标和类型
+            VStack(spacing: 6) {
+                ZStack {
+                    Circle()
+                        .fill(
                             LinearGradient(
-                                colors: [.purple, .pink],
-                                startPoint: .leading,
-                                endPoint: .trailing
+                                colors: [.purple.opacity(0.3), .pink.opacity(0.2)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             )
                         )
-                        .cornerRadius(5)
+                        .frame(width: 50, height: 50)
+                        .blur(radius: 8)
+
+                    Image(systemName: iconForInsightType(insight.type))
+                        .font(.system(size: 22))
+                        .foregroundColor(.purple)
+                }
+
+                Text(insight.type.rawValue)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+            .frame(width: 80)
+
+            // 中间：洞察内容
+            VStack(alignment: .leading, spacing: 6) {
+                // 主要描述
+                Text(insight.summary)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.white.opacity(0.95))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                // 建议（最多显示第一条）
+                if let firstSuggestion = insight.suggestions.first {
+                    HStack(spacing: 4) {
+                        Image(systemName: "lightbulb.fill")
+                            .font(.system(size: 8))
+                            .foregroundColor(.yellow.opacity(0.8))
+
+                        Text(firstSuggestion)
+                            .font(.system(size: 9))
+                            .foregroundColor(.white.opacity(0.7))
+                            .lineLimit(2)
+                    }
+                }
+
+                // 底部操作栏
+                HStack(spacing: 8) {
+                    // 时间戳
+                    Text(timeAgo(insight.timestamp))
+                        .font(.system(size: 8))
+                        .foregroundColor(.white.opacity(0.4))
+
+                    Spacer()
+
+                    // 清除按钮
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            insightsAnalyzer.clearInsights()
+                        }
+                    }) {
+                        HStack(spacing: 3) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 8))
+                            Text("清除")
+                                .font(.system(size: 9, weight: .medium))
+                        }
+                        .foregroundColor(.white.opacity(0.5))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.white.opacity(0.08))
+                        .cornerRadius(4)
                     }
                     .buttonStyle(.plain)
-                } else if summary.totalCount == 0 {
-                    Text("暂无通知数据")
-                        .font(.system(size: 9))
-                        .foregroundColor(.white.opacity(0.5))
-                } else {
-                    Button("配置AI分析") {
-                        AISettingsWindowManager.shared.show()
+
+                    // 重新分析按钮
+                    Button {
+                        Task {
+                            await analyzeCurrentSession()
+                        }
+                    } label: {
+                        HStack(spacing: 3) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 8))
+                            Text("重新分析")
+                                .font(.system(size: 9, weight: .medium))
+                        }
+                        .foregroundColor(.purple.opacity(0.9))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.purple.opacity(0.15))
+                        .cornerRadius(4)
                     }
-                    .font(.system(size: 9))
-                    .buttonStyle(.borderless)
+                    .buttonStyle(.plain)
                 }
             }
+            .padding(.trailing, 40)  // 为右上角关闭按钮留空间
 
             Spacer()
         }
-        .padding(.leading, 20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .padding(.leading, 16)
+        .padding(.vertical, 12)
     }
+
+    // 空状态
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 32))
+                .foregroundColor(.purple.opacity(0.5))
+
+            Text("还没有AI洞察")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.white.opacity(0.7))
+
+            Text("使用Claude Code后会自动生成")
+                .font(.system(size: 9))
+                .foregroundColor(.white.opacity(0.5))
+
+            // 检查是否有足够的通知数据（最近30分钟>=3条）
+            if hasEnoughData {
+                Button {
+                    Task {
+                        await analyzeCurrentSession()
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "wand.and.stars")
+                        Text("立即分析")
+                    }
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        LinearGradient(
+                            colors: [.purple, .pink],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(6)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // 检查是否有足够数据进行分析
+    private var hasEnoughData: Bool {
+        let notifications = NotificationManager.shared.notificationHistory
+        guard !notifications.isEmpty else { return false }
+
+        let thirtyMinutesAgo = Date().addingTimeInterval(-1800)
+        let recentNotifs = notifications.filter { $0.timestamp >= thirtyMinutesAgo }
+
+        return recentNotifs.count >= 3
+    }
+
+    // 辅助方法
+    private func iconForInsightType(_ type: InsightType) -> String {
+        switch type {
+        case .workPattern: return "chart.line.uptrend.xyaxis"
+        case .productivity: return "speedometer"
+        case .breakSuggestion: return "figure.walk"
+        case .focusIssue: return "eye.trianglebadge.exclamationmark"
+        case .achievement: return "star.fill"
+        case .antiPattern: return "exclamationmark.triangle"
+        }
+    }
+
+    private func analyzeCurrentSession() async {
+        await MainActor.run {
+            isAnalyzing = true
+        }
+
+        // 基于通知分析，使用规则检测+LLM增强
+        _ = await insightsAnalyzer.analyzeRecentActivity()
+
+        await MainActor.run {
+            isAnalyzing = false
+        }
+    }
+
+    private func timeAgo(_ date: Date) -> String {
+        let interval = Date().timeIntervalSince(date)
+        let minutes = Int(interval / 60)
+
+        if minutes < 1 {
+            return "刚刚"
+        } else if minutes < 60 {
+            return "\(minutes)分钟前"
+        } else if minutes < 1440 {
+            return "\(minutes / 60)小时前"
+        } else {
+            return "\(minutes / 1440)天前"
+        }
+    }
+
 
     private var closeButton: some View {
         Button(action: {

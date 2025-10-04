@@ -46,6 +46,8 @@
 		691169F32E90BF0D001E60F4 /* MCPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 691169F22E90BF0D001E60F4 /* MCPServer.swift */; };
 		6976430B2E4E3AB400BB17B5 /* ClaudeCodeSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6976430A2E4E3AB400BB17B5 /* ClaudeCodeSetup.swift */; };
 		69DFE6ED2E4B88110051A581 /* DiffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DFE6EC2E4B88110051A581 /* DiffView.swift */; };
+		69F712A32E9171D200F6E709 /* WorkInsights.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F712A22E9171D200F6E709 /* WorkInsights.swift */; };
+		69F712A52E9171DB00F6E709 /* WorkPatternDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F712A42E9171DB00F6E709 /* WorkPatternDetector.swift */; };
 		69F9A6442E8EDBDA009FAEC5 /* Statistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A6432E8EDBDA009FAEC5 /* Statistics.swift */; };
 		69F9A6482E8FC406009FAEC5 /* AIAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A6472E8FC406009FAEC5 /* AIAnalysis.swift */; };
 		69F9A64E2E8FD195009FAEC5 /* AISettingsWindowSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A64D2E8FD195009FAEC5 /* AISettingsWindowSwiftUI.swift */; };
@@ -107,6 +109,8 @@
 		691169F22E90BF0D001E60F4 /* MCPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPServer.swift; sourceTree = "<group>"; };
 		6976430A2E4E3AB400BB17B5 /* ClaudeCodeSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCodeSetup.swift; sourceTree = "<group>"; };
 		69DFE6EC2E4B88110051A581 /* DiffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffView.swift; sourceTree = "<group>"; };
+		69F712A22E9171D200F6E709 /* WorkInsights.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkInsights.swift; sourceTree = "<group>"; };
+		69F712A42E9171DB00F6E709 /* WorkPatternDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkPatternDetector.swift; sourceTree = "<group>"; };
 		69F9A6432E8EDBDA009FAEC5 /* Statistics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Statistics.swift; sourceTree = "<group>"; };
 		69F9A6472E8FC406009FAEC5 /* AIAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAnalysis.swift; sourceTree = "<group>"; };
 		69F9A64D2E8FD195009FAEC5 /* AISettingsWindowSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsWindowSwiftUI.swift; sourceTree = "<group>"; };
@@ -245,6 +249,8 @@
 		69B2FF882E91323000C6068C /* Models & Data */ = {
 			isa = PBXGroup;
 			children = (
+				69F712A42E9171DB00F6E709 /* WorkPatternDetector.swift */,
+				69F712A22E9171D200F6E709 /* WorkInsights.swift */,
 				69F9A6472E8FC406009FAEC5 /* AIAnalysis.swift */,
 				69F9A6432E8EDBDA009FAEC5 /* Statistics.swift */,
 				50NM00012C6F000000000001 /* NotificationModel.swift */,
@@ -424,6 +430,7 @@
 				5044EE9E2C3B0F3D00071C5C /* Ext+FileProvider.swift in Sources */,
 				504381A42C3A8C7E000ED325 /* NotchWindowController.swift in Sources */,
 				69076BF72E90ECCA00512D9D /* SummaryWindowController.swift in Sources */,
+				69F712A52E9171DB00F6E709 /* WorkPatternDetector.swift in Sources */,
 				69076BF52E90EC3800512D9D /* SessionSummary.swift in Sources */,
 				504381B12C3AE0B6000ED325 /* NotchHeaderView.swift in Sources */,
 				504381A22C3A8BE0000ED325 /* Ext+NSScreen.swift in Sources */,
@@ -431,6 +438,7 @@
 				50CB767E2C3BC8880070D5E6 /* NotchViewModel+Events.swift in Sources */,
 				504381AC2C3A95BD000ED325 /* EventMonitors.swift in Sources */,
 				502E41D62C3CEC990060660E /* Ext+NSAlert.swift in Sources */,
+				69F712A32E9171D200F6E709 /* WorkInsights.swift in Sources */,
 				504381A62C3A8CFD000ED325 /* NotchViewController.swift in Sources */,
 				504381AA2C3A9514000ED325 /* EventMonitor.swift in Sources */,
 				501F0E8C2C59E6BD00F0113C /* Language.swift in Sources */,

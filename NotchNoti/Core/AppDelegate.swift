@@ -34,6 +34,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 注册全局快捷键
         GlobalShortcutManager.shared.registerShortcuts()
 
+        // 启动AI工作模式检测器
+        WorkPatternDetector.shared.startMonitoring()
+
         let timer = Timer.scheduledTimer(
             withTimeInterval: 1,
             repeats: true

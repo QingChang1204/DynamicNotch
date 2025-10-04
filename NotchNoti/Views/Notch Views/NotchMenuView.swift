@@ -52,6 +52,12 @@ struct NotchMenuView: View {
             Divider()
 
             Button(action: {
+                AISettingsWindowManager.shared.show()
+            }) {
+                Label("LLM 配置", systemImage: "brain")
+            }
+
+            Button(action: {
                 let result = ClaudeCodeSetup.shared.setupClaudeCodeHooks()
                 ClaudeCodeSetup.shared.showSetupResult(result)
                 if result.success {
