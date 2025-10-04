@@ -34,7 +34,7 @@ struct NotchContentView: View {
                     NotchSettingsView(vm: vm)
                         .transition(AnyTransition.scale(scale: 0.8).combined(with: .opacity))
                 case .stats:
-                    CompactStatsView()
+                    GlobalStatsView()
                         .transition(AnyTransition.scale(scale: 0.8).combined(with: .opacity))
                 case .history:
                     CompactNotificationHistoryView()

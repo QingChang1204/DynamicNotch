@@ -917,3 +917,895 @@ struct CompactWorkSessionStatsView: View {
         .padding(10)
     }
 }
+
+// MARK: - 全局统计数据模型
+
+/// 时间范围选择
+enum TimeRange: String, CaseIterable, Identifiable {
+    case day = "24h"
+    case week = "7天"
+
+    var id: String { rawValue }
+
+    /// 获取起始时间
+    var startDate: Date {
+        let calendar = Calendar.current
+        let now = Date()
+
+        switch self {
+        case .day:
+            return calendar.date(byAdding: .hour, value: -24, to: now) ?? now
+        case .week:
+            return calendar.date(byAdding: .day, value: -7, to: now) ?? now
+        }
+    }
+
+    /// 检查日期是否在范围内
+    func contains(_ date: Date) -> Bool {
+        let result = date >= startDate
+        // 调试日志
+        // print("[TimeRange] 检查时间: \(date), 起始: \(startDate), 结果: \(result)")
+        return result
+    }
+}
+
+/// 通知类型分布数据
+struct NotificationTypeDistribution: Identifiable {
+    let id = UUID()
+    let type: NotchNotification.NotificationType
+    let count: Int
+    let percentage: Double
+
+    // 用于饼图的角度
+    var startAngle: Angle = .zero
+    var endAngle: Angle = .zero
+}
+
+/// 热力图数据点
+struct HeatmapCell: Identifiable {
+    let id = UUID()
+    let day: Int           // 0-6 (周一到周日)
+    let timeBlock: Int     // 0-5 (每天6个4小时时段)
+    let count: Int         // 通知数量
+
+    /// 热力颜色强度 (0.0-1.0)
+    var intensity: Double {
+        // 根据通知数量计算强度,最大按30条计算
+        return min(Double(count) / 30.0, 1.0)
+    }
+}
+
+/// 每日活跃度数据
+struct DayActivity: Identifiable {
+    let id = UUID()
+    let date: Date
+    let notificationCount: Int
+    let errorCount: Int
+    let warningCount: Int
+
+    var dateString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "M/d"
+        return formatter.string(from: date)
+    }
+}
+
+/// TOP工具使用统计
+struct ToolUsage: Identifiable {
+    let id = UUID()
+    let toolName: String
+    let count: Int
+    let icon: String
+    let color: Color
+
+    /// 用于条形图的等级 (0-10)
+    var level: Int {
+        // 按比例计算,最大100次为满级
+        return min(Int(Double(count) / 10.0), 10)
+    }
+}
+
+/// 全局统计数据
+struct GlobalStatistics {
+    let timeRange: TimeRange
+    let selectedProject: String?
+
+    // 通知类型分布 (14种)
+    let typeDistribution: [NotificationTypeDistribution]
+
+    // 时间热力图数据 (7天×6时段 = 42个单元格)
+    let heatmapData: [HeatmapCell]
+
+    // 活跃度曲线 (每日通知数)
+    let activityCurve: [DayActivity]
+
+    // TOP工具使用
+    let topTools: [ToolUsage]
+
+    // 快速指标
+    let totalNotifications: Int
+    let errorCount: Int
+    let warningCount: Int
+
+    // 项目统计
+    let projectName: String
+    let totalDuration: TimeInterval  // 总工作时长
+}
+
+// MARK: - 全局统计管理器扩展
+
+extension StatisticsManager {
+    /// 加载全局统计数据
+    func loadGlobalStatistics(
+        range: TimeRange,
+        project: String? = nil
+    ) -> GlobalStatistics {
+        // 从 NotificationManager 获取持久化历史
+        let allNotifications = NotificationManager.shared.getPersistentHistory()
+
+        // 定义需要统计的工作相关通知类型
+        let statisticsTypes: Set<NotchNotification.NotificationType> = [
+            .toolUse, .warning, .info, .success, .error, .hook
+        ]
+
+        // 筛选时间范围、项目和通知类型
+        let startDate = range.startDate
+        let now = Date()
+
+        let filtered = allNotifications.filter { notif in
+            let inRange = range.contains(notif.timestamp)
+            let inProject = project == nil || notif.metadata?["project"] == project
+            let isStatisticsType = statisticsTypes.contains(notif.type)
+            return inRange && inProject && isStatisticsType
+        }
+
+        // print("[Stats] 📊 筛选结果: \(filtered.count)条 (时间范围:\(range.rawValue), 项目:\(project ?? "全部"))")
+
+        // 1. 计算通知类型分布
+        let typeGroups = Dictionary(grouping: filtered, by: \.type)
+        let totalCount = filtered.count
+        var typeDistribution: [NotificationTypeDistribution] = typeGroups.map { type, notifications in
+            let count = notifications.count
+            let percentage = totalCount > 0 ? Double(count) / Double(totalCount) : 0
+            return NotificationTypeDistribution(
+                type: type,
+                count: count,
+                percentage: percentage
+            )
+        }
+        .sorted { $0.count > $1.count }
+
+        // 计算饼图角度
+        var currentAngle: Double = 0
+        typeDistribution = typeDistribution.map { var dist = $0
+            dist.startAngle = .degrees(currentAngle)
+            currentAngle += dist.percentage * 360
+            dist.endAngle = .degrees(currentAngle)
+            return dist
+        }
+
+        // 2. 计算热力图数据 (根据时间范围调整)
+        let calendar = Calendar.current
+        var heatmapData: [HeatmapCell] = []
+
+        if range == .day {
+            // 24h模式：显示最近24小时，按4小时分段（6段×4小时=24小时）
+            // 将24小时分为6个时间块，每个4小时
+            let now = Date()
+
+            for block in 0..<6 {
+                // 从现在往前推，每个block代表4小时
+                let blockStartTime = now.addingTimeInterval(-Double((6 - block) * 4 * 3600))
+                let blockEndTime = now.addingTimeInterval(-Double((5 - block) * 4 * 3600))
+
+                let count = filtered.filter { notif in
+                    return notif.timestamp >= blockStartTime && notif.timestamp < blockEndTime
+                }.count
+
+                // 将24小时块映射到7列的最后一列，按时间块垂直排列
+                heatmapData.append(HeatmapCell(day: 6, timeBlock: block, count: count))
+            }
+
+            // 其他列填充0
+            for day in 0..<6 {
+                for block in 0..<6 {
+                    heatmapData.append(HeatmapCell(day: day, timeBlock: block, count: 0))
+                }
+            }
+        } else {
+            // 7天模式：显示最近7天，每天按4小时分段
+            for day in 0..<7 {
+                let targetDate = calendar.date(byAdding: .day, value: -(6 - day), to: Date()) ?? Date()
+
+                for block in 0..<6 {
+                    let startHour = block * 4
+                    let endHour = startHour + 4
+
+                    let count = filtered.filter { notif in
+                        guard calendar.isDate(notif.timestamp, inSameDayAs: targetDate) else { return false }
+                        let hour = calendar.component(.hour, from: notif.timestamp)
+                        return hour >= startHour && hour < endHour
+                    }.count
+
+                    heatmapData.append(HeatmapCell(day: day, timeBlock: block, count: count))
+                }
+            }
+        }
+
+        // 3. 计算活跃度曲线 (根据时间范围调整)
+        var activityCurve: [DayActivity] = []
+
+        let dayCount = range == .day ? 1 : 7
+        for dayOffset in (0..<dayCount).reversed() {
+            guard let date = calendar.date(byAdding: .day, value: -dayOffset, to: Date()) else { continue }
+
+            let dayNotifications = filtered.filter { calendar.isDate($0.timestamp, inSameDayAs: date) }
+            let errorCount = dayNotifications.filter { $0.type == .error }.count
+            let warningCount = dayNotifications.filter { $0.type == .warning }.count
+
+            activityCurve.append(DayActivity(
+                date: date,
+                notificationCount: dayNotifications.count,
+                errorCount: errorCount,
+                warningCount: warningCount
+            ))
+        }
+
+        // 4. 计算TOP工具
+        let toolCounts = Dictionary(grouping: filtered.compactMap { $0.metadata?["tool_name"] }, by: { $0 })
+            .mapValues { $0.count }
+            .sorted { $0.value > $1.value }
+            .prefix(5)
+
+        let topTools = toolCounts.map { toolName, count in
+            ToolUsage(
+                toolName: toolName,
+                count: count,
+                icon: getToolIcon(toolName),
+                color: getToolColor(toolName)
+            )
+        }
+
+        // 5. 快速指标
+        let errorCount = filtered.filter { $0.type == .error }.count
+        let warningCount = filtered.filter { $0.type == .warning }.count
+
+        // 6. 项目信息
+        let projectName = project ?? filtered.first?.metadata?["project"] ?? "全部项目"
+
+        // 计算总工作时长 (从session历史)
+        let totalDuration = sessionHistory
+            .filter { session in
+                if let proj = project {
+                    return session.projectName == proj
+                }
+                return true
+            }
+            .reduce(0.0) { $0 + $1.duration }
+
+        return GlobalStatistics(
+            timeRange: range,
+            selectedProject: project,
+            typeDistribution: typeDistribution,
+            heatmapData: heatmapData,
+            activityCurve: activityCurve,
+            topTools: topTools,
+            totalNotifications: filtered.count,
+            errorCount: errorCount,
+            warningCount: warningCount,
+            projectName: projectName,
+            totalDuration: totalDuration
+        )
+    }
+
+    /// 获取工具图标
+    private func getToolIcon(_ toolName: String) -> String {
+        switch toolName.lowercased() {
+        case "read": return "📖"
+        case "write": return "✍️"
+        case "edit": return "✏️"
+        case "bash": return "⚡️"
+        case "grep": return "🔍"
+        case "glob": return "📁"
+        case "task": return "🎯"
+        case "webfetch": return "🌐"
+        case "websearch": return "🔎"
+        default: return "🔧"
+        }
+    }
+
+    /// 获取工具颜色
+    private func getToolColor(_ toolName: String) -> Color {
+        switch toolName.lowercased() {
+        case "read": return .blue
+        case "write", "edit": return .green
+        case "bash": return .orange
+        case "grep", "glob": return .purple
+        case "task": return .pink
+        case "webfetch", "websearch": return .cyan
+        default: return .gray
+        }
+    }
+
+    /// 获取所有可用的项目列表
+    func getAvailableProjects() -> [String] {
+        let allNotifications = NotificationManager.shared.getPersistentHistory()
+        let projects = Set(allNotifications.compactMap { $0.metadata?["project"] })
+        return Array(projects).sorted()
+    }
+}
+
+// MARK: - 可视化组件
+
+/// 饼图扇形
+struct PieSlice: Shape {
+    var startAngle: Angle
+    var endAngle: Angle
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2
+
+        path.move(to: center)
+        path.addArc(
+            center: center,
+            radius: radius,
+            startAngle: startAngle - .degrees(90),  // 调整起始角度让0度在顶部
+            endAngle: endAngle - .degrees(90),
+            clockwise: false
+        )
+        path.closeSubpath()
+
+        return path
+    }
+}
+
+/// 24小时横向条形图
+struct HourlyBarChart: View {
+    let heatmapData: [HeatmapCell]
+
+    var body: some View {
+        VStack(spacing: 2) {
+            // 从热力图数据中提取最后一列（day=6）的6个时间块
+            let blocks = (0..<6).map { block -> (block: Int, count: Int) in
+                let cell = heatmapData.first { $0.day == 6 && $0.timeBlock == block }
+                return (block, cell?.count ?? 0)
+            }
+
+            let maxCount = blocks.map { $0.count }.max() ?? 1
+
+            ForEach(blocks.reversed(), id: \.block) { item in
+                HStack(spacing: 4) {
+                    // 时间标签
+                    Text(timeLabel(for: item.block))
+                        .font(.system(size: 8))
+                        .foregroundColor(.white.opacity(0.5))
+                        .frame(width: 30, alignment: .trailing)
+
+                    // 条形
+                    GeometryReader { geo in
+                        let width = maxCount > 0 ? (CGFloat(item.count) / CGFloat(maxCount)) * geo.size.width : 0
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(item.count > 0 ? Color.cyan.opacity(0.7) : Color.white.opacity(0.05))
+                            .frame(width: max(width, 2))
+                    }
+
+                    // 数量
+                    Text("\(item.count)")
+                        .font(.system(size: 8))
+                        .foregroundColor(.cyan)
+                        .frame(width: 20, alignment: .leading)
+                }
+                .frame(height: 10)
+            }
+        }
+    }
+
+    private func timeLabel(for block: Int) -> String {
+        let hoursAgo = (6 - block) * 4
+        return "\(hoursAgo)h前"
+    }
+}
+
+/// 时间热力图
+struct HeatmapView: View {
+    let data: [HeatmapCell]
+
+    var body: some View {
+        VStack(spacing: 2) {
+            // 热力图网格 (6行×7列)
+            VStack(spacing: 1) {
+                ForEach(0..<6) { block in
+                    HStack(spacing: 1) {
+                        ForEach(0..<7) { day in
+                            let cell = data.first { $0.day == day && $0.timeBlock == block }
+                            Rectangle()
+                                .fill(heatColor(intensity: cell?.intensity ?? 0))
+                                .frame(width: 20, height: 12)
+                        }
+                    }
+                }
+            }
+
+            // 底部标签：显示相对天数（-6天到今天）
+            HStack(spacing: 1) {
+                ForEach([-6, -5, -4, -3, -2, -1, 0], id: \.self) { dayOffset in
+                    Text(dayOffset == 0 ? "今" : "\(dayOffset)")
+                        .font(.system(size: 6))
+                        .foregroundColor(.white.opacity(0.3))
+                        .frame(width: 20)
+                }
+            }
+        }
+    }
+
+    private func heatColor(intensity: Double) -> Color {
+        if intensity == 0 {
+            return Color.white.opacity(0.05)
+        }
+        return Color.cyan.opacity(0.3 + intensity * 0.7)
+    }
+}
+
+/// 通知类型饼图
+struct NotificationTypePieChart: View {
+    let distribution: [NotificationTypeDistribution]
+    let totalCount: Int
+
+    var body: some View {
+        ZStack {
+            // 饼图
+            ForEach(distribution) { segment in
+                PieSlice(
+                    startAngle: segment.startAngle,
+                    endAngle: segment.endAngle
+                )
+                .fill(getTypeColor(segment.type))
+            }
+            .frame(width: 100, height: 100)
+
+            // 中心圆圈 + 总数
+            Circle()
+                .fill(Color.black.opacity(0.3))
+                .frame(width: 50, height: 50)
+
+            VStack(spacing: 2) {
+                Text("\(totalCount)")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.white)
+                Text("通知")
+                    .font(.system(size: 8))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+        }
+    }
+
+    private func getTypeColor(_ type: NotchNotification.NotificationType) -> Color {
+        // 创建一个临时通知实例来获取颜色
+        let notification = NotchNotification(title: "", message: "", type: type)
+        return notification.color
+    }
+}
+
+/// 紧凑型图例(颜色点+数量)
+struct CompactLegendItem: View {
+    let color: Color
+    let icon: String
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Circle()
+                .fill(color)
+                .frame(width: 6, height: 6)
+            Text(icon)
+                .font(.system(size: 8))
+            Text("\(count)")
+                .font(.system(size: 8))
+                .foregroundColor(.white.opacity(0.7))
+        }
+    }
+}
+/// 24小时紧凑曲线（基于热力图数据）
+struct Compact24hCurve: View {
+    let heatmapData: [HeatmapCell]
+
+    var body: some View {
+        GeometryReader { geo in
+            let blocks = (0..<6).map { block -> Int in
+                heatmapData.first { $0.day == 6 && $0.timeBlock == block }?.count ?? 0
+            }.reversed()
+
+            let maxCount = blocks.max() ?? 1
+            let points = blocks.enumerated().map { index, count -> CGPoint in
+                let x = CGFloat(index) / 5.0 * geo.size.width
+                let y = maxCount > 0 ? geo.size.height * (1 - CGFloat(count) / CGFloat(maxCount)) : geo.size.height
+                return CGPoint(x: x, y: y)
+            }
+
+            // 渐变填充区域
+            Path { path in
+                guard !points.isEmpty else { return }
+                path.move(to: CGPoint(x: points[0].x, y: geo.size.height))
+                for point in points {
+                    path.addLine(to: point)
+                }
+                path.addLine(to: CGPoint(x: points.last!.x, y: geo.size.height))
+                path.closeSubpath()
+            }
+            .fill(LinearGradient(
+                colors: [Color.cyan.opacity(0.3), Color.cyan.opacity(0.0)],
+                startPoint: .top,
+                endPoint: .bottom
+            ))
+
+            // 曲线
+            Path { path in
+                guard !points.isEmpty else { return }
+                path.move(to: points[0])
+                for i in 1..<points.count {
+                    path.addLine(to: points[i])
+                }
+            }
+            .stroke(Color.cyan, lineWidth: 2)
+
+            // 数据点
+            ForEach(points.indices, id: \.self) { index in
+                Circle()
+                    .fill(Color.cyan)
+                    .frame(width: 4, height: 4)
+                    .position(points[index])
+            }
+        }
+    }
+}
+
+/// 活跃度曲线图
+struct ActivityCurveView: View {
+    let data: [DayActivity]
+
+    var body: some View {
+        GeometryReader { geometry in
+            let maxCount = max(data.map { $0.notificationCount }.max() ?? 1, 1)
+            let points = data.enumerated().map { index, activity -> CGPoint in
+                let x = geometry.size.width * CGFloat(index) / CGFloat(max(data.count - 1, 1))
+                let y = geometry.size.height * (1 - CGFloat(activity.notificationCount) / CGFloat(maxCount))
+                return CGPoint(x: x, y: y)
+            }
+
+            ZStack(alignment: .bottom) {
+                // 渐变填充区域
+                Path { path in
+                    guard !points.isEmpty else { return }
+                    path.move(to: CGPoint(x: points[0].x, y: geometry.size.height))
+                    path.addLine(to: points[0])
+                    for point in points.dropFirst() {
+                        path.addLine(to: point)
+                    }
+                    path.addLine(to: CGPoint(x: points.last!.x, y: geometry.size.height))
+                    path.closeSubpath()
+                }
+                .fill(
+                    LinearGradient(
+                        colors: [Color.cyan.opacity(0.3), Color.cyan.opacity(0.0)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+
+                // 曲线
+                Path { path in
+                    guard !points.isEmpty else { return }
+                    path.move(to: points[0])
+                    for point in points.dropFirst() {
+                        path.addLine(to: point)
+                    }
+                }
+                .stroke(Color.cyan, lineWidth: 2)
+
+                // 数据点
+                ForEach(data.indices, id: \.self) { index in
+                    Circle()
+                        .fill(Color.cyan)
+                        .frame(width: 4, height: 4)
+                        .position(points[index])
+                }
+            }
+        }
+    }
+}
+
+/// TOP工具条形图（迷你版）
+struct MiniToolBarChart: View {
+    let tool: ToolUsage
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(tool.icon)
+                .font(.system(size: 10))
+                .frame(width: 16)
+
+            // 条形图
+            HStack(spacing: 0) {
+                ForEach(0..<10) { i in
+                    Rectangle()
+                        .fill(i < tool.level ? tool.color.opacity(0.8) : Color.white.opacity(0.08))
+                        .frame(width: 10, height: 10)
+                        .cornerRadius(1)
+                }
+            }
+
+            Text("\(tool.count)")
+                .font(.system(size: 8))
+                .foregroundColor(.white.opacity(0.5))
+                .frame(width: 24, alignment: .trailing)
+        }
+    }
+}
+
+/// 快速指标卡片
+struct QuickStatCard: View {
+    let icon: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10))
+                .foregroundColor(color)
+            Text(value)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(color)
+        }
+    }
+}
+
+// MARK: - 全局统计主视图
+
+/// 全局统计仪表盘视图 (600×130内容区)
+struct GlobalStatsView: View {
+    @ObservedObject var statsManager = StatisticsManager.shared
+    @State private var timeRange: TimeRange = .week
+    @State private var selectedProject: String? = nil
+    @State private var stats: GlobalStatistics?
+    @State private var availableProjects: [String] = []
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            if let stats = stats {
+                VStack(spacing: 0) {
+                    // 顶部筛选器
+                    filterBar
+                        .frame(height: 24)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 4)
+
+                    // 主内容区 (三栏布局)
+                    HStack(spacing: 12) {
+                        // 左栏: 热力图 + 快速指标 (180px)
+                        leftColumn(stats: stats)
+                            .frame(width: 180)
+
+                        // 中栏: 通知类型饼图 + 图例 (200px)
+                        centerColumn(stats: stats)
+                            .frame(width: 200)
+
+                        // 右栏: 活跃度曲线 + TOP工具 (220px)
+                        rightColumn(stats: stats)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
+                }
+            } else {
+                // 加载中或无数据
+                emptyState
+            }
+
+            // 关闭按钮
+            closeButton
+        }
+        .frame(height: 160)
+        .onAppear {
+            availableProjects = statsManager.getAvailableProjects()
+            loadData()
+        }
+        .onChange(of: timeRange) { _ in
+            loadData()
+        }
+        .onChange(of: selectedProject) { _ in
+            loadData()
+        }
+    }
+
+    // MARK: - 筛选栏
+
+    private var filterBar: some View {
+        HStack(spacing: 8) {
+            // 时间范围选择器
+            Picker("", selection: $timeRange) {
+                ForEach(TimeRange.allCases) { range in
+                    Text(range.rawValue).tag(range)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 120)
+
+            Spacer()
+
+            // 项目筛选菜单
+            Menu {
+                Button("全部项目") {
+                    selectedProject = nil
+                }
+
+                Divider()
+
+                ForEach(availableProjects, id: \.self) { project in
+                    Button(project) {
+                        selectedProject = project
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(stats?.projectName ?? "加载中...")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.6))
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 8))
+                        .foregroundColor(.white.opacity(0.4))
+                }
+            }
+            .menuStyle(.borderlessButton)
+
+            Spacer()
+        }
+    }
+
+    // MARK: - 左栏
+
+    private func leftColumn(stats: GlobalStatistics) -> some View {
+        VStack(spacing: 6) {
+            if stats.timeRange == .day {
+                // 24h模式：横向条形图
+                HourlyBarChart(heatmapData: stats.heatmapData)
+                    .frame(height: 80)
+            } else {
+                // 7天模式：热力图
+                HeatmapView(data: stats.heatmapData)
+                    .frame(height: 80)
+            }
+
+            // 快速指标
+            HStack(spacing: 12) {
+                QuickStatCard(
+                    icon: "bell.fill",
+                    value: "\(stats.totalNotifications)",
+                    color: .cyan
+                )
+                QuickStatCard(
+                    icon: "exclamationmark.triangle.fill",
+                    value: "\(stats.errorCount)",
+                    color: .red
+                )
+            }
+            .frame(height: 20)
+        }
+    }
+
+    // MARK: - 中栏
+
+    private func centerColumn(stats: GlobalStatistics) -> some View {
+        HStack(spacing: 8) {
+            // 饼图
+            NotificationTypePieChart(
+                distribution: stats.typeDistribution,
+                totalCount: stats.totalNotifications
+            )
+            .frame(width: 100, height: 100)
+
+            // 图例 (TOP 6类型)
+            VStack(alignment: .leading, spacing: 3) {
+                ForEach(Array(stats.typeDistribution.prefix(6))) { dist in
+                    let notification = NotchNotification(title: "", message: "", type: dist.type)
+                    CompactLegendItem(
+                        color: notification.color,
+                        icon: typeIcon(dist.type),
+                        count: dist.count
+                    )
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    // MARK: - 右栏
+
+    private func rightColumn(stats: GlobalStatistics) -> some View {
+        VStack(spacing: 6) {
+            if stats.timeRange == .day {
+                // 24h模式：显示小时级分布（使用条形图数据）
+                Compact24hCurve(heatmapData: stats.heatmapData)
+                    .frame(height: 50)
+            } else {
+                // 7天模式：显示天级活跃度曲线
+                ActivityCurveView(data: stats.activityCurve)
+                    .frame(height: 50)
+            }
+
+            // TOP工具 (显示TOP 3)
+            VStack(spacing: 3) {
+                ForEach(stats.topTools.prefix(3)) { tool in
+                    MiniToolBarChart(tool: tool)
+                }
+            }
+        }
+    }
+
+    // MARK: - 空状态
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "chart.bar.doc.horizontal")
+                .font(.system(size: 40))
+                .foregroundColor(.gray.opacity(0.5))
+            Text("暂无统计数据")
+                .font(.caption)
+                .foregroundColor(.gray)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - 关闭按钮
+
+    private var closeButton: some View {
+        Button(action: {
+            NotchViewModel.shared?.returnToNormal()
+        }) {
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 16))
+                .foregroundColor(.white.opacity(0.3))
+                .background(Circle().fill(Color.black.opacity(0.3)))
+        }
+        .buttonStyle(PlainButtonStyle())
+        .padding(10)
+    }
+
+    // MARK: - 辅助方法
+
+    private func loadData() {
+        stats = statsManager.loadGlobalStatistics(range: timeRange, project: selectedProject)
+    }
+
+    private func typeIcon(_ type: NotchNotification.NotificationType) -> String {
+        switch type {
+        case .success: return "✓"
+        case .error: return "✗"
+        case .warning: return "⚠"
+        case .info: return "ℹ"
+        case .hook: return "🪝"
+        case .toolUse: return "🔧"
+        case .progress: return "⏳"
+        case .celebration: return "🎉"
+        case .reminder: return "🔔"
+        case .download: return "↓"
+        case .upload: return "↑"
+        case .security: return "🔒"
+        case .ai: return "🤖"
+        case .sync: return "🔄"
+        }
+    }
+
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = (Int(duration) % 3600) / 60
+
+        if hours > 0 {
+            return String(format: "%dh%02dm", hours, minutes)
+        } else {
+            return String(format: "%dm", minutes)
+        }
+    }
+}

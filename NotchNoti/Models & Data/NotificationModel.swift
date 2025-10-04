@@ -187,7 +187,7 @@ class NotificationManager: ObservableObject {
 
     // 双层存储配置
     private let maxHistoryCount = 50  // 内存层：UI显示的最大数量（避免卡顿）
-    private let maxPersistentCount = 1000  // 持久层：完整历史记录数量（用于统计分析）
+    private let maxPersistentCount = 5000  // 持久层：完整历史记录数量（用于统计分析）
     private let maxQueueSize = 10  // 最大队列长度
     private var displayDuration: TimeInterval = 1.0  // 基础显示时间
     private weak var hideTimer: Timer?  // 使用 weak 避免循环引用
@@ -431,22 +431,51 @@ class NotificationManager: ObservableObject {
             notificationHistory.removeLast()
         }
 
-        // 持久层：完整历史记录（统计分析用，1000条）
+        // 持久层：完整历史记录（统计分析用，5000条）
         saveToPersistentStorage(notification)
     }
 
-    // 保存到持久层存储
+    // 持久化保存队列（串行队列，避免并发写入冲突）
+    private let persistQueue = DispatchQueue(label: "com.notchnoti.persist", qos: .utility)
+    private var pendingSaveTimer: Timer?
+    private var pendingSaveNotifications: [NotchNotification] = []
+
+    // 保存到持久层存储（批量优化）
     private func saveToPersistentStorage(_ notification: NotchNotification) {
-        DispatchQueue.global(qos: .utility).async { [weak self] in
+        persistQueue.async { [weak self] in
             guard let self = self else { return }
+
+            // 立即添加到待保存队列
+            self.pendingSaveNotifications.append(notification)
+
+            // 防抖：100ms内的通知批量保存
+            DispatchQueue.main.async {
+                self.pendingSaveTimer?.invalidate()
+                self.pendingSaveTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { [weak self] _ in
+                    self?.flushPendingSaves()
+                }
+            }
+        }
+    }
+
+    // 批量刷新保存
+    private func flushPendingSaves() {
+        persistQueue.async { [weak self] in
+            guard let self = self else { return }
+            guard !self.pendingSaveNotifications.isEmpty else { return }
+
+            let toSave = self.pendingSaveNotifications
+            self.pendingSaveNotifications.removeAll()
 
             var fullHistory = self.loadFullHistory()
 
-            // 添加新通知到持久层
-            fullHistory.removeAll { $0.id == notification.id }
-            fullHistory.insert(notification, at: 0)
+            // 批量添加
+            for notification in toSave {
+                fullHistory.removeAll { $0.id == notification.id }
+                fullHistory.insert(notification, at: 0)
+            }
 
-            // 限制持久层大小（1000条）
+            // 限制持久层大小（5000条）
             if fullHistory.count > self.maxPersistentCount {
                 fullHistory = Array(fullHistory.prefix(self.maxPersistentCount))
             }
@@ -454,6 +483,9 @@ class NotificationManager: ObservableObject {
             // 保存到 UserDefaults
             if let encoded = try? JSONEncoder().encode(fullHistory) {
                 UserDefaults.standard.set(encoded, forKey: self.persistentStorageKey)
+                print("[NotificationManager] 批量保存成功: \(toSave.count)个新通知，总计\(fullHistory.count)条")
+            } else {
+                print("[NotificationManager] ❌ 持久化保存失败: 编码错误")
             }
         }
     }
@@ -469,6 +501,11 @@ class NotificationManager: ObservableObject {
 
     // 获取完整历史记录（用于统计分析）
     func getFullHistoryForAnalysis() -> [NotchNotification] {
+        return loadFullHistory()
+    }
+
+    // 获取持久化历史（别名方法，用于全局统计）
+    func getPersistentHistory() -> [NotchNotification] {
         return loadFullHistory()
     }
 
