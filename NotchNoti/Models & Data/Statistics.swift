@@ -1084,26 +1084,28 @@ extension StatisticsManager {
             return dist
         }
 
-        // 2. 计算热力图数据 (根据时间范围调整)
+        // 2. 计算热力图数据 (优化：单次遍历)
         let calendar = Calendar.current
         var heatmapData: [HeatmapCell] = []
 
         if range == .day {
-            // 24h模式：显示最近24小时，按4小时分段（6段×4小时=24小时）
-            // 将24小时分为6个时间块，每个4小时
+            // 24h模式：单次遍历计算所有时间块
             let now = Date()
+            var blockCounts = [Int](repeating: 0, count: 6)
+
+            for notif in filtered {
+                let interval = now.timeIntervalSince(notif.timestamp)
+                let hoursAgo = Int(interval / 3600)
+                if hoursAgo >= 0 && hoursAgo < 24 {
+                    let block = 5 - (hoursAgo / 4)  // 反转：0-3h→block5, 20-23h→block0
+                    if block >= 0 && block < 6 {
+                        blockCounts[block] += 1
+                    }
+                }
+            }
 
             for block in 0..<6 {
-                // 从现在往前推，每个block代表4小时
-                let blockStartTime = now.addingTimeInterval(-Double((6 - block) * 4 * 3600))
-                let blockEndTime = now.addingTimeInterval(-Double((5 - block) * 4 * 3600))
-
-                let count = filtered.filter { notif in
-                    return notif.timestamp >= blockStartTime && notif.timestamp < blockEndTime
-                }.count
-
-                // 将24小时块映射到7列的最后一列，按时间块垂直排列
-                heatmapData.append(HeatmapCell(day: 6, timeBlock: block, count: count))
+                heatmapData.append(HeatmapCell(day: 6, timeBlock: block, count: blockCounts[block]))
             }
 
             // 其他列填充0
@@ -1113,21 +1115,24 @@ extension StatisticsManager {
                 }
             }
         } else {
-            // 7天模式：显示最近7天，每天按4小时分段
+            // 7天模式：单次遍历计算所有天×时间块
+            var dayCounts = [[Int]](repeating: [Int](repeating: 0, count: 6), count: 7)
+
+            for notif in filtered {
+                let daysAgo = calendar.dateComponents([.day], from: calendar.startOfDay(for: notif.timestamp), to: calendar.startOfDay(for: Date())).day ?? 0
+                if daysAgo >= 0 && daysAgo <= 6 {
+                    let day = 6 - daysAgo
+                    let hour = calendar.component(.hour, from: notif.timestamp)
+                    let block = hour / 4
+                    if block < 6 {
+                        dayCounts[day][block] += 1
+                    }
+                }
+            }
+
             for day in 0..<7 {
-                let targetDate = calendar.date(byAdding: .day, value: -(6 - day), to: Date()) ?? Date()
-
                 for block in 0..<6 {
-                    let startHour = block * 4
-                    let endHour = startHour + 4
-
-                    let count = filtered.filter { notif in
-                        guard calendar.isDate(notif.timestamp, inSameDayAs: targetDate) else { return false }
-                        let hour = calendar.component(.hour, from: notif.timestamp)
-                        return hour >= startHour && hour < endHour
-                    }.count
-
-                    heatmapData.append(HeatmapCell(day: day, timeBlock: block, count: count))
+                    heatmapData.append(HeatmapCell(day: day, timeBlock: block, count: dayCounts[day][block]))
                 }
             }
         }
