@@ -187,6 +187,18 @@ struct NotificationView: View, Equatable {
                     .foregroundColor(.secondary)
                     .lineLimit(isExpanded ? nil : 2)
                     .animation(AnimationConstants.notificationExpand, value: isExpanded)
+
+                // Action buttons for interactive notifications
+                if let actions = notification.actions, !actions.isEmpty {
+                    HStack(spacing: 8) {
+                        ForEach(actions) { action in
+                            NotificationActionButton(action: action) {
+                                handleAction(action)
+                            }
+                        }
+                    }
+                    .padding(.top, 6)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             
@@ -296,7 +308,36 @@ struct NotificationView: View, Equatable {
         // 打开窗口后收起刘海
         NotchViewModel.shared?.notchClose()
     }
-    
+
+    private func handleAction(_ action: NotificationAction) {
+        // 检查是否是 MCP 交互式通知
+        if action.action.hasPrefix("mcp_action:") {
+            let components = action.action.components(separatedBy: ":")
+            guard components.count == 3 else { return }
+
+            let requestId = components[1]
+            let choice = components[2]
+
+            // 通过 Unix Socket 发送用户选择结果到 MCP 服务器
+            sendMCPActionResult(requestId: requestId, choice: choice)
+
+            // 隐藏当前通知
+            withAnimation(AnimationConstants.notificationHide) {
+                manager.hideCurrentNotification()
+            }
+        } else {
+            // 处理其他类型的 action
+            print("[NotificationView] Action triggered: \(action.action)")
+        }
+    }
+
+    private func sendMCPActionResult(requestId: String, choice: String) {
+        // 发送到 PendingActionStore（MCP 服务器会轮询检查）
+        Task {
+            await PendingActionStore.shared.setChoice(id: requestId, choice: choice)
+        }
+    }
+
     // 背景渐变（紧急通知有特殊背景）
     @ViewBuilder
     private var backgroundGradient: some View {

@@ -41,7 +41,7 @@ class NotchMCPServer {
             version: "1.0.0",
             capabilities: .init(
                 prompts: .init(listChanged: false),
-                resources: .init(subscribe: false, listChanged: false),
+                resources: .init(subscribe: true, listChanged: false),
                 tools: .init(listChanged: false)
             )
         )
@@ -168,6 +168,34 @@ class NotchMCPServer {
                 "required": .array([.string("question"), .string("options")])
             ])
         ))
+
+        // Tool 4: 显示可操作的结果通知（阻塞式交互）
+        tools.append(Tool(
+            name: "notch_show_actionable_result",
+            description: "Show an actionable notification with buttons, waits for user click (max 50s timeout)",
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object([
+                    "title": .object([
+                        "type": .string("string"),
+                        "description": .string("Notification title")
+                    ]),
+                    "message": .object([
+                        "type": .string("string"),
+                        "description": .string("Notification message")
+                    ]),
+                    "type": .object([
+                        "type": .string("string"),
+                        "description": .string("Notification type: success, error, warning, info")
+                    ]),
+                    "actions": .object([
+                        "type": .string("array"),
+                        "description": .string("Array of action button labels (max 3)")
+                    ])
+                ]),
+                "required": .array([.string("title"), .string("message"), .string("actions")])
+            ])
+        ))
     }
 
     private func setupResources() {
@@ -184,6 +212,14 @@ class NotchMCPServer {
             name: "Notification History",
             uri: "notch://notifications/history",
             description: "Recent notification history with metadata",
+            mimeType: "application/json"
+        ))
+
+        // Resource 3: 待处理的交互式通知
+        resources.append(Resource(
+            name: "Pending Action Notifications",
+            uri: "notch://actions/pending",
+            description: "Interactive notifications waiting for user action",
             mimeType: "application/json"
         ))
     }
@@ -209,6 +245,9 @@ class NotchMCPServer {
 
         case "notch_ask_confirmation":
             return try await handleAskConfirmation(params.arguments)
+
+        case "notch_show_actionable_result":
+            return try await handleShowActionableResult(params.arguments)
 
         default:
             throw MCPError.unknownTool(params.name)
@@ -303,6 +342,99 @@ class NotchMCPServer {
         )
     }
 
+    private func handleShowActionableResult(_ arguments: [String: Value]?) async throws -> CallTool.Result {
+        guard let args = arguments else {
+            throw MCPError.missingArguments
+        }
+
+        let title = args["title"]?.stringValue ?? "Action Required"
+        let message = args["message"]?.stringValue ?? ""
+        let typeStr = args["type"]?.stringValue ?? "info"
+
+        // Extract action labels
+        let actionValues = args["actions"]?.arrayValue ?? []
+        let actions = actionValues.compactMap { $0.stringValue }
+
+        guard !actions.isEmpty else {
+            throw MCPError.invalidArguments
+        }
+
+        // Generate unique request ID
+        let requestId = UUID().uuidString
+
+        // Store pending action
+        await PendingActionStore.shared.create(
+            id: requestId,
+            title: title,
+            message: message,
+            type: typeStr,
+            actions: actions
+        )
+
+        // Map notification type
+        let notificationType: NotchNotification.NotificationType = switch typeStr {
+        case "success": .success
+        case "error": .error
+        case "warning": .warning
+        default: .info
+        }
+
+        // Create notification with action metadata
+        let notification = NotchNotification(
+            title: title,
+            message: message,
+            type: notificationType,
+            priority: .urgent,
+            actions: actions.map { actionLabel in
+                NotificationAction(
+                    label: actionLabel,
+                    action: "mcp_action:\(requestId):\(actionLabel)",
+                    style: .normal
+                )
+            },
+            metadata: [
+                "source": "mcp",
+                "interactive": "true",
+                "request_id": requestId,
+                "actionable": "true"
+            ]
+        )
+
+        // Send notification to GUI
+        sendNotificationViaSocket(notification)
+
+        // Wait up to 50 seconds for user action (blocking)
+        for _ in 0..<50 {
+            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+
+            if let userChoice = await PendingActionStore.shared.getChoice(id: requestId) {
+                // User clicked a button!
+                await PendingActionStore.shared.remove(id: requestId)
+
+                // Notify resource subscribers about update
+                if let server = server {
+                    let notification = Message<ResourceUpdatedNotification>(
+                        method: ResourceUpdatedNotification.name,
+                        params: ResourceUpdatedNotification.Parameters(uri: "notch://actions/pending")
+                    )
+                    try? await server.notify(notification)
+                }
+
+                return CallTool.Result(
+                    content: [.text("User selected: \(userChoice)")]
+                )
+            }
+        }
+
+        // Timeout after 50 seconds
+        await PendingActionStore.shared.remove(id: requestId)
+
+        return CallTool.Result(
+            content: [.text("timeout")],
+            isError: false
+        )
+    }
+
     // MARK: - Resource Handlers
 
     private func handleResourceRead(_ params: ReadResource.Parameters) async throws -> ReadResource.Result {
@@ -312,6 +444,9 @@ class NotchMCPServer {
 
         case "notch://notifications/history":
             return try await provideNotificationHistory()
+
+        case "notch://actions/pending":
+            return try await providePendingActions()
 
         default:
             throw MCPError.unknownResource(params.uri)
@@ -336,18 +471,42 @@ class NotchMCPServer {
         )
     }
 
+    private func providePendingActions() async throws -> ReadResource.Result {
+        let pending = await PendingActionStore.shared.getPending()
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let jsonData = try encoder.encode(pending)
+        let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
+
+        return ReadResource.Result(
+            contents: [.text(jsonString, uri: "notch://actions/pending", mimeType: "application/json")]
+        )
+    }
+
     // MARK: - Unix Socket Helper
 
     /// 通过 Unix Socket 发送通知到 GUI 进程
     private func sendNotificationViaSocket(_ notification: NotchNotification) {
         // 构建 JSON
-        let json: [String: Any] = [
+        var json: [String: Any] = [
             "title": notification.title,
             "message": notification.message,
             "type": notification.type.rawValue,
-            "priority": notification.priority.rawValue,
-            "metadata": notification.metadata
+            "priority": notification.priority.rawValue
         ]
+        if let metadata = notification.metadata {
+            json["metadata"] = metadata
+        }
+        if let actions = notification.actions {
+            json["actions"] = actions.map { action in
+                [
+                    "label": action.label,
+                    "action": action.action,
+                    "style": action.style.rawValue
+                ]
+            }
+        }
 
         guard let data = try? JSONSerialization.data(withJSONObject: json),
               let jsonString = String(data: data, encoding: .utf8) else { return }
@@ -395,7 +554,7 @@ class NotchMCPServer {
         guard result == 0 else { return }
 
         // 发送数据 (使用 MSG_NOSIGNAL 标志，但 macOS 不支持，用 SO_NOSIGPIPE 代替)
-        message.withCString { cString in
+        _ = message.withCString { cString in
             Darwin.send(sock, cString, strlen(cString), 0)
         }
     }
@@ -428,6 +587,13 @@ extension Value {
         }
         if case .int(let value) = self {
             return Double(value)
+        }
+        return nil
+    }
+
+    var arrayValue: [Value]? {
+        if case .array(let value) = self {
+            return value
         }
         return nil
     }
