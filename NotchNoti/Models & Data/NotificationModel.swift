@@ -185,19 +185,27 @@ class NotificationManager: ObservableObject {
     @Published var pendingNotifications: [NotchNotification] = []  // 通知队列
     @Published var mergedCount: Int = 0  // 合并的通知数量
 
-    // 双层存储配置
-    private let maxHistoryCount = 50  // 内存层：UI显示的最大数量（避免卡顿）
-    private let maxPersistentCount = 5000  // 持久层：完整历史记录数量（用于统计分析）
-    private let maxQueueSize = 10  // 最大队列长度
-    private var displayDuration: TimeInterval = 1.0  // 基础显示时间
+    // 从 ConfigManager 读取配置（动态可调）
+    private var maxHistoryCount: Int {
+        NotificationConfigManager.shared.maxHistoryCount
+    }
+    private var maxPersistentCount: Int {
+        NotificationConfigManager.shared.maxPersistentCount
+    }
+    private var maxQueueSize: Int {
+        NotificationConfigManager.shared.maxQueueSize
+    }
+    private var mergeTimeWindow: TimeInterval {
+        NotificationConfigManager.shared.mergeTimeWindow
+    }
+
     private weak var hideTimer: Timer?  // 使用 weak 避免循环引用
     private let timerQueue = DispatchQueue(label: "com.notchdrop.timer", qos: .userInteractive)
 
     // 持久层存储键
     private let persistentStorageKey = "com.notchnoti.fullHistory"
-    
-    // 通知合并时间窗口
-    private let mergeTimeWindow: TimeInterval = 0.5
+
+    // 通知合并状态
     private var lastNotificationTime: Date?
     private var lastNotificationSource: String?
 

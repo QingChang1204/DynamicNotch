@@ -49,6 +49,16 @@ class NotificationConfigManager: ObservableObject {
     @PublishedPersist(key: "notificationConfig.mergeWindow", defaultValue: 0.5)
     var mergeTimeWindow: TimeInterval
 
+    // MARK: - 高级配置
+    @PublishedPersist(key: "notificationConfig.maxHistoryCount", defaultValue: 50)
+    var maxHistoryCount: Int  // UI 显示的最大历史数量
+
+    @PublishedPersist(key: "notificationConfig.maxPersistentCount", defaultValue: 5000)
+    var maxPersistentCount: Int  // 持久化存储的最大数量
+
+    @PublishedPersist(key: "notificationConfig.maxQueueSize", defaultValue: 10)
+    var maxQueueSize: Int  // 通知队列最大长度
+
     private init() {
         // 确保所有类型都有默认配置
         initializeDefaultConfigs()

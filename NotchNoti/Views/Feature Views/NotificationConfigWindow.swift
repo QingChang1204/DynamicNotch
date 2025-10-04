@@ -301,6 +301,147 @@ struct NotificationConfigWindowView: View {
                     }
                 }
             }
+
+            // 高级设置卡片
+            ConfigCard(title: "高级设置", icon: "gearshape.2.fill", color: .cyan) {
+                VStack(spacing: 16) {
+                    // 历史记录数量
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.system(size: 16))
+                                .foregroundColor(.white.opacity(0.7))
+                                .frame(width: 24)
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("UI历史记录数量")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.9))
+
+                                Text("历史视图中显示的最大通知数量")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.white.opacity(0.65))
+                            }
+
+                            Spacer()
+
+                            Text("\(configManager.maxHistoryCount)")
+                                .font(.system(size: 15, weight: .bold, design: .monospaced))
+                                .foregroundColor(Color(red: 0.4, green: 0.8, blue: 1.0))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.cyan.opacity(0.2))
+                                .cornerRadius(8)
+                        }
+
+                        Slider(
+                            value: Binding(
+                                get: { Double(configManager.maxHistoryCount) },
+                                set: { configManager.maxHistoryCount = Int($0) }
+                            ),
+                            in: 10...200,
+                            step: 10
+                        )
+                        .tint(.cyan)
+
+                        Text("建议值：50-100，过大可能影响UI性能")
+                            .font(.system(size: 11))
+                            .foregroundColor(.white.opacity(0.6))
+                    }
+
+                    Divider().background(Color.white.opacity(0.2))
+
+                    // 持久化存储数量
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "internaldrive")
+                                .font(.system(size: 16))
+                                .foregroundColor(.white.opacity(0.7))
+                                .frame(width: 24)
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("持久化存储数量")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.9))
+
+                                Text("用于AI分析的完整历史记录上限")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.white.opacity(0.65))
+                            }
+
+                            Spacer()
+
+                            Text("\(configManager.maxPersistentCount)")
+                                .font(.system(size: 15, weight: .bold, design: .monospaced))
+                                .foregroundColor(Color(red: 0.4, green: 0.8, blue: 1.0))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.cyan.opacity(0.2))
+                                .cornerRadius(8)
+                        }
+
+                        Slider(
+                            value: Binding(
+                                get: { Double(configManager.maxPersistentCount) },
+                                set: { configManager.maxPersistentCount = Int($0) }
+                            ),
+                            in: 1000...10000,
+                            step: 500
+                        )
+                        .tint(.cyan)
+
+                        Text("建议值：3000-5000，过大可能增加存储占用")
+                            .font(.system(size: 11))
+                            .foregroundColor(.white.opacity(0.6))
+                    }
+
+                    Divider().background(Color.white.opacity(0.2))
+
+                    // 通知队列大小
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "list.bullet.rectangle")
+                                .font(.system(size: 16))
+                                .foregroundColor(.white.opacity(0.7))
+                                .frame(width: 24)
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("通知队列大小")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.9))
+
+                                Text("等待显示的通知最大排队数量")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.white.opacity(0.65))
+                            }
+
+                            Spacer()
+
+                            Text("\(configManager.maxQueueSize)")
+                                .font(.system(size: 15, weight: .bold, design: .monospaced))
+                                .foregroundColor(Color(red: 0.4, green: 0.8, blue: 1.0))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.cyan.opacity(0.2))
+                                .cornerRadius(8)
+                        }
+
+                        Slider(
+                            value: Binding(
+                                get: { Double(configManager.maxQueueSize) },
+                                set: { configManager.maxQueueSize = Int($0) }
+                            ),
+                            in: 5...50,
+                            step: 5
+                        )
+                        .tint(.cyan)
+
+                        Text("建议值：10-20，超出后新通知将被丢弃")
+                            .font(.system(size: 11))
+                            .foregroundColor(.white.opacity(0.6))
+                    }
+                }
+            }
         }
     }
 
