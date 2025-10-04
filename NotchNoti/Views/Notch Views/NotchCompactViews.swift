@@ -33,37 +33,55 @@ struct CompactNotificationHistoryView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
-                // 顶部栏：只在历史视图显示搜索框和清空按钮
-                if isHistoryView && !manager.notificationHistory.isEmpty {
-                    HStack(spacing: 8) {
-                        // 搜索栏
-                        searchBar
+                // 顶部栏：历史视图显示搜索框和清空按钮（有通知时）或关闭按钮（无通知时）
+                if isHistoryView {
+                    if !manager.notificationHistory.isEmpty {
+                        HStack(spacing: 8) {
+                            // 搜索栏
+                            searchBar
 
-                        // 清除按钮
-                        Button(action: {
-                            manager.clearHistory()
-                        }) {
-                            Image(systemName: "trash")
-                                .font(.system(size: 13))
-                                .foregroundColor(.white.opacity(0.5))
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .help("清空历史")
+                            // 清除按钮
+                            Button(action: {
+                                manager.clearHistory()
+                            }) {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.white.opacity(0.5))
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .help("清空历史")
 
-                        // 关闭按钮
-                        Button(action: {
-                            NotchViewModel.shared?.returnToNormal()
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(.white.opacity(0.5))
+                            // 关闭按钮
+                            Button(action: {
+                                NotchViewModel.shared?.returnToNormal()
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.white.opacity(0.5))
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .help("返回")
                         }
-                        .buttonStyle(PlainButtonStyle())
-                        .help("返回")
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                        .padding(.bottom, 6)
+                    } else {
+                        // 历史为空时，只显示关闭按钮
+                        HStack {
+                            Spacer()
+                            Button(action: {
+                                NotchViewModel.shared?.returnToNormal()
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.white.opacity(0.5))
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .help("返回")
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
-                    .padding(.bottom, 6)
                 }
 
                 if filteredNotifications.isEmpty {
