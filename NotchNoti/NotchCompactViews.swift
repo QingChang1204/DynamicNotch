@@ -174,8 +174,24 @@ struct CompactNotificationRow: View {
 
             Spacer(minLength: 0)
 
-            // 右侧：Diff 按钮 + 时间（时间始终靠右）
+            // 右侧：Diff/总结按钮 + 时间（时间始终靠右）
             HStack(spacing: 6) {
+                // 总结按钮 - 重新打开总结窗口
+                if notification.metadata?["summary_id"] != nil {
+                    Button(action: {
+                        openSummaryWindow()
+                    }) {
+                        Image(systemName: "doc.text.fill")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.green.opacity(0.9))
+                            .frame(width: 20, height: 20)
+                            .background(Color.green.opacity(0.15))
+                            .cornerRadius(5)
+                    }
+                    .buttonStyle(.plain)
+                    .help("重新打开总结")
+                }
+
                 // Diff 预览按钮 - 更小更精致
                 if notification.metadata?["diff_path"] != nil {
                     Button(action: {
@@ -275,6 +291,27 @@ struct CompactNotificationRow: View {
         )
 
         window.makeKeyAndOrderFront(nil)
+
+        // 打开窗口后收起刘海
+        NotchViewModel.shared?.notchClose()
+    }
+
+    private func openSummaryWindow() {
+        guard let summaryIdString = notification.metadata?["summary_id"],
+              let summaryId = UUID(uuidString: summaryIdString) else {
+            print("[CompactNotificationRow] No summary_id found in metadata")
+            return
+        }
+
+        // 从 SessionSummaryManager 中查找总结
+        guard let summary = SessionSummaryManager.shared.recentSummaries.first(where: { $0.id == summaryId }) else {
+            print("[CompactNotificationRow] Summary not found in SessionSummaryManager: \(summaryIdString)")
+            return
+        }
+
+        // 使用 SummaryWindowController 打开总结窗口
+        let projectPath = notification.metadata?["project_path"]
+        SummaryWindowController.shared.showSummary(summary, projectPath: projectPath)
 
         // 打开窗口后收起刘海
         NotchViewModel.shared?.notchClose()

@@ -378,11 +378,17 @@ class NotchMCPServer {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
 
-        var summaryJSON = ""
-        if let jsonData = try? encoder.encode(summary),
-           let jsonString = String(data: jsonData, encoding: .utf8) {
-            summaryJSON = jsonString
+        guard let jsonData = try? encoder.encode(summary),
+              let summaryJSON = String(data: jsonData, encoding: .utf8),
+              !summaryJSON.isEmpty else {
+            print("[MCP] ERROR: Failed to encode summary to JSON")
+            return CallTool.Result(
+                content: [.text("Error: Failed to encode summary data")],
+                isError: true
+            )
         }
+
+        print("[MCP] Encoded summary_data length: \(summaryJSON.count) chars")
 
         let notification = NotchNotification(
             title: "📋 Session总结已生成",
@@ -493,6 +499,10 @@ class NotchMCPServer {
             "priority": notification.priority.rawValue
         ]
         if let metadata = notification.metadata {
+            print("[MCP] Metadata before JSON: \(metadata.keys.joined(separator: ", "))")
+            if let summaryData = metadata["summary_data"] {
+                print("[MCP] summary_data value length: \(summaryData.count) chars")
+            }
             json["metadata"] = metadata
         }
         if let actions = notification.actions {

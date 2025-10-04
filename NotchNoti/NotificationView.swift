@@ -202,6 +202,20 @@ struct NotificationView: View, Equatable {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             
+            // 如果有总结，显示查看总结按钮
+            if notification.metadata?["summary_id"] != nil {
+                Button(action: {
+                    openSummaryWindow()
+                    manager.cancelHideTimer()
+                }) {
+                    Image(systemName: "doc.text.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.green)
+                }
+                .buttonStyle(.plain)
+                .help("查看总结")
+            }
+
             // 如果有 diff 信息，显示查看改动按钮
             if notification.metadata?["diff_path"] != nil {
                 Button(action: {
@@ -216,7 +230,7 @@ struct NotificationView: View, Equatable {
                 .buttonStyle(.plain)
                 .help("查看文件改动")
             }
-            
+
             // 添加关闭按钮
             Button(action: {
                 withAnimation(AnimationConstants.notificationHide) {
@@ -271,6 +285,35 @@ struct NotificationView: View, Equatable {
         }
     }
     
+    private func openSummaryWindow() {
+        print("[NotificationView] 点击总结按钮")
+        print("[NotificationView] metadata: \(notification.metadata ?? [:])")
+
+        guard let summaryIdString = notification.metadata?["summary_id"],
+              let summaryId = UUID(uuidString: summaryIdString) else {
+            print("[NotificationView] ❌ 无法获取 summary_id")
+            return
+        }
+
+        print("[NotificationView] summary_id: \(summaryId)")
+        print("[NotificationView] recentSummaries count: \(SessionSummaryManager.shared.recentSummaries.count)")
+
+        // 从 SessionSummaryManager 中查找总结
+        guard let summary = SessionSummaryManager.shared.recentSummaries.first(where: { $0.id == summaryId }) else {
+            print("[NotificationView] ❌ 未找到总结，ID: \(summaryId)")
+            return
+        }
+
+        print("[NotificationView] ✅ 找到总结: \(summary.projectName)")
+
+        // 使用 SummaryWindowController 打开总结窗口
+        let projectPath = notification.metadata?["project_path"]
+        SummaryWindowController.shared.showSummary(summary, projectPath: projectPath)
+
+        // 打开窗口后收起刘海
+        NotchViewModel.shared?.notchClose()
+    }
+
     private func openDiffWindow() {
         guard let diffPath = notification.metadata?["diff_path"],
               let filePath = notification.metadata?["file_path"] else { return }
@@ -617,6 +660,20 @@ struct NotificationHistoryItem: View {
                 Spacer()
                 
                 // 如果有 diff 信息，显示图标
+                // 总结按钮
+                if notification.metadata?["summary_id"] != nil {
+                    Button(action: {
+                        openSummaryWindow()
+                    }) {
+                        Image(systemName: "doc.text.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.green.opacity(0.7))
+                    }
+                    .buttonStyle(.plain)
+                    .help("查看总结")
+                }
+
+                // Diff预览按钮
                 if let diffPath = notification.metadata?["diff_path"],
                    let filePath = notification.metadata?["file_path"] {
                     Button(action: {
@@ -627,6 +684,7 @@ struct NotificationHistoryItem: View {
                             .foregroundColor(.blue.opacity(0.7))
                     }
                     .buttonStyle(.plain)
+                    .help("查看改动")
                 }
             }
             
@@ -648,7 +706,36 @@ struct NotificationHistoryItem: View {
                 .fill(Color.secondary.opacity(isSelected ? 0.15 : 0.08))
         )
     }
-    
+
+    private func openSummaryWindow() {
+        print("[NotificationView] 点击总结按钮")
+        print("[NotificationView] metadata: \(notification.metadata ?? [:])")
+
+        guard let summaryIdString = notification.metadata?["summary_id"],
+              let summaryId = UUID(uuidString: summaryIdString) else {
+            print("[NotificationView] ❌ 无法获取 summary_id")
+            return
+        }
+
+        print("[NotificationView] summary_id: \(summaryId)")
+        print("[NotificationView] recentSummaries count: \(SessionSummaryManager.shared.recentSummaries.count)")
+
+        // 从 SessionSummaryManager 中查找总结
+        guard let summary = SessionSummaryManager.shared.recentSummaries.first(where: { $0.id == summaryId }) else {
+            print("[NotificationView] ❌ 未找到总结，ID: \(summaryId)")
+            return
+        }
+
+        print("[NotificationView] ✅ 找到总结: \(summary.projectName)")
+
+        // 使用 SummaryWindowController 打开总结窗口
+        let projectPath = notification.metadata?["project_path"]
+        SummaryWindowController.shared.showSummary(summary, projectPath: projectPath)
+
+        // 打开窗口后收起刘海
+        NotchViewModel.shared?.notchClose()
+    }
+
     private func openDiffWindow(diffPath: String, filePath: String, isPreview: Bool = false) {
         // 创建新窗口显示 DiffView
         let window = NSWindow(
@@ -674,11 +761,11 @@ struct NotificationHistoryItem: View {
         )
         
         window.makeKeyAndOrderFront(nil)
-        
+
         // 打开窗口后收起刘海
         NotchViewModel.shared?.notchClose()
     }
-    
+
     private func timeAgoString(from date: Date) -> String {
         let interval = Date().timeIntervalSince(date)
         

@@ -163,7 +163,13 @@ class UnixSocketServerSimple: ObservableObject {
         do {
             let decoder = JSONDecoder()
             let notification = try decoder.decode(NotificationRequest.self, from: data)
-            
+
+            print("[UnixSocket] Received notification: \(notification.title)")
+            print("[UnixSocket] Metadata keys: \(notification.metadata?.keys.joined(separator: ", ") ?? "none")")
+            if let summaryData = notification.metadata?["summary_data"] {
+                print("[UnixSocket] summary_data length: \(summaryData.count) chars")
+            }
+
             // 创建通知
             let notchNotification = NotchNotification(
                 title: notification.title,
