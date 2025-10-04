@@ -26,21 +26,48 @@ xcodebuild -scheme NotchNoti -configuration Debug build
 
 ### Create DMG Distribution Package
 
-**IMPORTANT**: The build script does NOT include the hook binary. You must manually update it:
+**CRITICAL**: There are two DMG build scenarios:
+
+#### Option 1: Quick Build (No Rust Changes) - RECOMMENDED
+If you **have NOT modified** the Rust hook code, use the automated script:
+
+```bash
+./build-dmg-signed.sh
+```
+
+This script:
+- Uses the existing `notch-hook` binary already in the project
+- Builds the Swift app in Release configuration
+- Signs both the hook and the app bundle
+- Creates and signs the DMG file
+- Output: `build/NotchNoti-1.0.0-Signed.dmg`
+
+#### Option 2: Full Rebuild (Rust Code Changed)
+If you **have modified** `.claude/hooks/rust-hook/src/main.rs`, rebuild manually:
 
 ```bash
 # 1. Build the Rust hook first
 cd .claude/hooks/rust-hook
 cargo build --release
 
-# 2. Build Release app
+# 2. Copy new hook to project root (where build script expects it)
+cp target/release/notch-hook ../../notch-hook
+
+# 3. Run the build script
+cd ../..
+./build-dmg-signed.sh
+```
+
+**Alternative manual steps** (if script unavailable):
+```bash
+# 1. Build Release app
 xcodebuild -scheme NotchNoti -configuration Release build
 
-# 3. Copy hook to Release app bundle
-cp .claude/hooks/rust-hook/target/release/notch-hook \
+# 2. Copy hook to Release app bundle
+cp notch-hook \
    ~/Library/Developer/Xcode/DerivedData/NotchNoti-*/Build/Products/Release/NotchNoti.app/Contents/MacOS/
 
-# 4. Sign everything (if distributing)
+# 3. Sign everything
 /usr/bin/codesign --force --sign "Developer ID Application: <NAME> (<TEAM_ID>)" \
    -o runtime \
    ~/Library/Developer/Xcode/DerivedData/NotchNoti-*/Build/Products/Release/NotchNoti.app/Contents/MacOS/notch-hook
@@ -49,7 +76,7 @@ cp .claude/hooks/rust-hook/target/release/notch-hook \
    -o runtime \
    ~/Library/Developer/Xcode/DerivedData/NotchNoti-*/Build/Products/Release/NotchNoti.app
 
-# 5. Create and sign DMG
+# 4. Create and sign DMG
 hdiutil create -volname "NotchNoti" \
    -srcfolder ~/Library/Developer/Xcode/DerivedData/NotchNoti-*/Build/Products/Release/NotchNoti.app \
    -ov -format UDZO build/NotchNoti-1.0.0-Signed.dmg
@@ -58,11 +85,96 @@ hdiutil create -volname "NotchNoti" \
    build/NotchNoti-1.0.0-Signed.dmg
 ```
 
-**Why manual steps are needed**:
-- The `build-dmg.sh` script builds without the latest hook binary
-- Hook binary must be compiled from Rust source before packaging
-- Code signing requires the hook to be signed first, then the app bundle
-- Using `/usr/bin/codesign` avoids conflicts with conda/homebrew versions
+**Key Points**:
+- ✅ **Default**: Use `build-dmg-signed.sh` script unless you changed Rust code
+- 🦀 **Rust modified**: Rebuild hook with Cargo, then run build script
+- 🔑 Code signing requires the hook to be signed first, then the app bundle
+- 🛠️ Using `/usr/bin/codesign` avoids conflicts with conda/homebrew versions
+
+## Project Structure
+
+The Xcode project is organized into 10 functional Groups (with physical folder structure):
+
+```
+NotchNoti/
+├── Core/                           # Application entry point
+│   ├── main.swift                  # App bootstrap
+│   └── AppDelegate.swift           # Lifecycle management
+│
+├── Windows & Controllers/          # Window management layer
+│   ├── NotchWindow.swift
+│   ├── NotchWindowController.swift
+│   ├── NotchViewController.swift
+│   └── SummaryWindowController.swift
+│
+├── Views/                          # All UI components
+│   ├── Notch Views/               # Main notch interface
+│   │   ├── NotchView.swift
+│   │   ├── NotchHeaderView.swift
+│   │   ├── NotchContentView.swift
+│   │   ├── NotchMenuView.swift
+│   │   ├── NotchSettingsView.swift
+│   │   └── NotchCompactViews.swift
+│   │
+│   ├── Notification Views/        # Notification rendering
+│   │   ├── NotificationView.swift
+│   │   ├── NotificationEffects.swift
+│   │   └── DiffView.swift
+│   │
+│   └── Feature Views/             # Specialized features
+│       ├── AISettingsWindowSwiftUI.swift
+│       └── SessionSummary.swift
+│
+├── ViewModels & State/            # State management (MVVM)
+│   ├── NotchViewModel.swift
+│   ├── NotchViewModel+Events.swift
+│   └── PendingActionStore.swift
+│
+├── Models & Data/                 # Business logic and data models
+│   ├── NotificationModel.swift
+│   ├── NotificationStats.swift
+│   ├── Statistics.swift
+│   └── AIAnalysis.swift
+│
+├── Communication/                 # External communication
+│   ├── UnixSocketServerSimple.swift
+│   └── MCPServer.swift
+│
+├── Integration/                   # Third-party integrations
+│   ├── ClaudeCodeSetup.swift
+│   └── GlobalShortcuts.swift
+│
+├── Event Handling/                # System event monitoring
+│   ├── EventMonitor.swift
+│   └── EventMonitors.swift
+│
+├── Utilities & Extensions/        # Helpers and extensions
+│   ├── Extensions/
+│   │   ├── Ext+NSScreen.swift
+│   │   ├── Ext+NSImage.swift
+│   │   ├── Ext+NSAlert.swift
+│   │   ├── Ext+URL.swift
+│   │   └── Ext+FileProvider.swift
+│   │
+│   └── Helpers/
+│       ├── Language.swift
+│       ├── PerformanceConfig.swift
+│       └── PublishedPersist.swift
+│
+└── Resources/                     # Assets and configuration
+    ├── Assets.xcassets
+    ├── Localizable.xcstrings
+    ├── InfoPlist.xcstrings
+    ├── Info.plist
+    ├── NotchNoti.entitlements
+    └── notch-hook                 # Rust binary (876KB)
+```
+
+**Architecture Pattern**: MVVM (Model-View-ViewModel)
+- **Views** render UI based on ViewModels
+- **ViewModels** manage state and business logic
+- **Models** define data structures and persistence
+- **Communication** handles external I/O (sockets, MCP)
 
 ## Architecture
 
