@@ -318,6 +318,9 @@ struct NotificationView: View, Equatable {
             let requestId = components[1]
             let choice = components[2]
 
+            // 记录用户选择到通知的 metadata
+            updateNotificationWithChoice(choice: action.label)
+
             // 通过 Unix Socket 发送用户选择结果到 MCP 服务器
             sendMCPActionResult(requestId: requestId, choice: choice)
 
@@ -329,6 +332,11 @@ struct NotificationView: View, Equatable {
             // 处理其他类型的 action
             print("[NotificationView] Action triggered: \(action.action)")
         }
+    }
+
+    private func updateNotificationWithChoice(choice: String) {
+        // 更新当前通知的 metadata，添加用户选择
+        manager.recordUserChoice(for: notification.id, choice: choice)
     }
 
     private func sendMCPActionResult(requestId: String, choice: String) {

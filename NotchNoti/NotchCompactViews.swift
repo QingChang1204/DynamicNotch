@@ -143,20 +143,10 @@ struct CompactNotificationRow: View {
 
             // 文字内容
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(notification.title)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.95))
-                        .lineLimit(1)
-
-                    Spacer(minLength: 4)
-
-                    // 时间标签 - 右上角
-                    Text(timeAgo(notification.timestamp))
-                        .font(.system(size: 9, design: .rounded))
-                        .foregroundColor(.white.opacity(0.35))
-                        .monospacedDigit()
-                }
+                Text(notification.title)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.95))
+                    .lineLimit(1)
 
                 if !notification.message.isEmpty {
                     Text(notification.message)
@@ -164,6 +154,49 @@ struct CompactNotificationRow: View {
                         .foregroundColor(.white.opacity(0.5))
                         .lineLimit(1)
                 }
+
+                // 显示用户选择 - 如果有交互式操作
+                if let userChoice = getUserChoice() {
+                    HStack(spacing: 4) {
+                        Image(systemName: "hand.tap.fill")
+                            .font(.system(size: 8))
+                            .foregroundColor(.green.opacity(0.7))
+                        Text("已选择: \(userChoice)")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.green.opacity(0.8))
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.green.opacity(0.15))
+                    .cornerRadius(4)
+                }
+            }
+
+            Spacer(minLength: 0)
+
+            // 右侧：Diff 按钮 + 时间（时间始终靠右）
+            HStack(spacing: 6) {
+                // Diff 预览按钮 - 更小更精致
+                if notification.metadata?["diff_path"] != nil {
+                    Button(action: {
+                        openDiffWindow()
+                    }) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.blue.opacity(0.9))
+                            .frame(width: 20, height: 20)
+                            .background(Color.blue.opacity(0.15))
+                            .cornerRadius(5)
+                    }
+                    .buttonStyle(.plain)
+                    .help("查看文件改动")
+                }
+
+                // 时间标签 - 始终在最右边
+                Text(timeAgo(notification.timestamp))
+                    .font(.system(size: 9, design: .rounded))
+                    .foregroundColor(.white.opacity(0.35))
+                    .monospacedDigit()
             }
         }
         .padding(.horizontal, 10)
@@ -183,6 +216,68 @@ struct CompactNotificationRow: View {
         if hours < 24 { return "\(hours)h" }
         let days = hours / 24
         return "\(days)d"
+    }
+
+    // 获取用户选择（从 metadata 中提取）
+    private func getUserChoice() -> String? {
+        // 检查是否是交互式通知
+        guard let metadata = notification.metadata,
+              metadata["actionable"] == "true",
+              let requestId = metadata["request_id"] else {
+            return nil
+        }
+
+        // 从 actions 中查找被选择的那个
+        if let actions = notification.actions {
+            for action in actions {
+                // action.action 格式: "mcp_action:<requestId>:<choice>"
+                if action.action.hasPrefix("mcp_action:\(requestId):") {
+                    let components = action.action.components(separatedBy: ":")
+                    if components.count == 3 {
+                        // 检查该 action 是否被标记为已选择（存储在 metadata 中）
+                        if metadata["user_choice"] == action.label {
+                            return action.label
+                        }
+                    }
+                }
+            }
+        }
+
+        return nil
+    }
+
+    private func openDiffWindow() {
+        guard let diffPath = notification.metadata?["diff_path"],
+              let filePath = notification.metadata?["file_path"] else { return }
+
+        let isPreview = notification.metadata?["is_preview"] == "true"
+
+        // 创建新窗口显示 DiffView
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+
+        let fileName = URL(fileURLWithPath: filePath).lastPathComponent
+        window.title = isPreview ? "改动预览 - \(fileName)" : "文件改动 - \(fileName)"
+        window.center()
+        window.setFrameAutosaveName("DiffWindow")
+
+        let isPresented = Binding<Bool>(
+            get: { window.isVisible },
+            set: { if !$0 { window.close() } }
+        )
+
+        window.contentView = NSHostingView(
+            rootView: DiffView(diffPath: diffPath, filePath: filePath, isPresented: isPresented)
+        )
+
+        window.makeKeyAndOrderFront(nil)
+
+        // 打开窗口后收起刘海
+        NotchViewModel.shared?.notchClose()
     }
 }
 

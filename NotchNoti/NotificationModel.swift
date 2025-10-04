@@ -17,7 +17,7 @@ struct NotchNotification: Identifiable, Codable, Equatable {
     let priority: Priority
     let icon: String?
     let actions: [NotificationAction]?
-    let metadata: [String: String]?
+    var metadata: [String: String]?  // var 允许修改用户选择等运行时数据
     
     static func == (lhs: NotchNotification, rhs: NotchNotification) -> Bool {
         lhs.id == rhs.id
@@ -594,6 +594,44 @@ class NotificationManager: ObservableObject {
     
     func clearHistory() {
         notificationHistory.removeAll()
+    }
+
+    /// 记录用户对交互式通知的选择
+    func recordUserChoice(for notificationId: UUID, choice: String) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+
+            // 在历史记录中找到对应的通知并更新
+            if let index = self.notificationHistory.firstIndex(where: { $0.id == notificationId }) {
+                // 直接修改 metadata（现在 metadata 是 var 了）
+                if self.notificationHistory[index].metadata != nil {
+                    self.notificationHistory[index].metadata?["user_choice"] = choice
+                } else {
+                    self.notificationHistory[index].metadata = ["user_choice": choice]
+                }
+
+                print("[NotificationManager] 记录用户选择: \(choice) for \(notificationId)")
+
+                // 同时更新持久化存储
+                self.updatePersistentStorageUserChoice(notificationId: notificationId, choice: choice)
+            }
+        }
+    }
+
+    private func updatePersistentStorageUserChoice(notificationId: UUID, choice: String) {
+        var fullHistory = loadFullHistory()
+        if let index = fullHistory.firstIndex(where: { $0.id == notificationId }) {
+            // 直接修改 metadata
+            if fullHistory[index].metadata != nil {
+                fullHistory[index].metadata?["user_choice"] = choice
+            } else {
+                fullHistory[index].metadata = ["user_choice": choice]
+            }
+
+            if let data = try? JSONEncoder().encode(fullHistory) {
+                UserDefaults.standard.set(data, forKey: persistentStorageKey)
+            }
+        }
     }
 
     /// 当用户返回主页面时，检查并显示待处理的通知
