@@ -11,6 +11,7 @@ echo "🚀 开始打包 NotchNoti（带代码签名）..."
 APP_NAME="NotchNoti"
 DMG_NAME="NotchNoti"
 VERSION="1.0.0"
+BUILD_DATE=$(date +"%Y%m%d-%H%M%S")  # 格式: 20251004-081830
 BUNDLE_ID="com.qingchang.notchnoti"
 
 # 代码签名配置
@@ -33,7 +34,7 @@ BUILD_DIR="${PROJECT_DIR}/build"
 RELEASE_DIR="${BUILD_DIR}/Release"
 DMG_DIR="${BUILD_DIR}/dmg"
 DMG_CONTENTS="${DMG_DIR}/${DMG_NAME}"
-FINAL_DMG="${BUILD_DIR}/${DMG_NAME}-${VERSION}.dmg"
+FINAL_DMG="${BUILD_DIR}/${DMG_NAME}-${VERSION}-${BUILD_DATE}.dmg"
 
 echo "📝 签名配置: ${SIGN_IDENTITY}"
 
@@ -56,9 +57,12 @@ if ! security find-identity -v -p codesigning | grep -q "${SIGN_IDENTITY}"; then
     SIGN_IDENTITY=""
 fi
 
-# 清理旧文件
-echo "📦 清理旧文件..."
-rm -rf "${BUILD_DIR}"
+# 清理旧文件（保留之前的 DMG）
+echo "📦 清理构建缓存..."
+rm -rf "${BUILD_DIR}/DerivedData"
+rm -rf "${BUILD_DIR}/Release"
+rm -rf "${BUILD_DIR}/dmg"
+mkdir -p "${BUILD_DIR}"
 mkdir -p "${RELEASE_DIR}"
 mkdir -p "${DMG_CONTENTS}"
 

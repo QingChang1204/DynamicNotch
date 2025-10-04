@@ -16,10 +16,11 @@ class GlobalShortcutManager {
 
     // 快捷键定义
     enum Shortcut: UInt32 {
-        case toggleNotch = 1  // ⌘K
-        case clearHistory = 2  // ⌘D
-        case showStats = 3     // ⌘S
-        case showHistory = 4   // ⌘H
+        case toggleNotch = 1    // ⌘⌥N (Command+Option+N)
+        case clearHistory = 2    // ⌘⌥D (Command+Option+D)
+        case showStats = 3       // ⌘⌥S (Command+Option+S)
+        case showHistory = 4     // ⌘⌥H (Command+Option+H)
+        case showAIAnalysis = 5  // ⌘⌥A (Command+Option+A)
     }
 
     private init() {}
@@ -37,11 +38,13 @@ class GlobalShortcutManager {
             return noErr
         }, 1, &eventSpec, nil, &eventHandler)
 
-        // 注册快捷键
-        registerHotKey(.toggleNotch, keyCode: UInt32(kVK_ANSI_K), modifiers: UInt32(cmdKey))  // ⌘K
-        registerHotKey(.clearHistory, keyCode: UInt32(kVK_ANSI_D), modifiers: UInt32(cmdKey))  // ⌘D
-        registerHotKey(.showStats, keyCode: UInt32(kVK_ANSI_S), modifiers: UInt32(cmdKey))    // ⌘S
-        registerHotKey(.showHistory, keyCode: UInt32(kVK_ANSI_H), modifiers: UInt32(cmdKey))  // ⌘H
+        // 注册快捷键 (使用 ⌘⌥ 组合避免冲突)
+        let cmdOpt = UInt32(cmdKey | optionKey)
+        registerHotKey(.toggleNotch, keyCode: UInt32(kVK_ANSI_N), modifiers: cmdOpt)      // ⌘⌥N
+        registerHotKey(.clearHistory, keyCode: UInt32(kVK_ANSI_D), modifiers: cmdOpt)     // ⌘⌥D
+        registerHotKey(.showStats, keyCode: UInt32(kVK_ANSI_S), modifiers: cmdOpt)        // ⌘⌥S
+        registerHotKey(.showHistory, keyCode: UInt32(kVK_ANSI_H), modifiers: cmdOpt)      // ⌘⌥H
+        registerHotKey(.showAIAnalysis, keyCode: UInt32(kVK_ANSI_A), modifiers: cmdOpt)   // ⌘⌥A
     }
 
     private func registerHotKey(_ shortcut: Shortcut, keyCode: UInt32, modifiers: UInt32) {
@@ -73,7 +76,7 @@ class GlobalShortcutManager {
 
             switch shortcut {
             case .toggleNotch:
-                // ⌘K - 切换刘海开关
+                // ⌘⌥N - 切换刘海开关
                 if vm.status == .closed {
                     vm.notchOpen(.click)  // 使用 .click 作为快捷键触发
                 } else {
@@ -81,7 +84,7 @@ class GlobalShortcutManager {
                 }
 
             case .clearHistory:
-                // ⌘D - 清空历史
+                // ⌘⌥D - 清空历史
                 if vm.status != .closed {
                     NotificationManager.shared.clearHistory()
                     // 发送反馈
@@ -89,18 +92,25 @@ class GlobalShortcutManager {
                 }
 
             case .showStats:
-                // ⌘S - 显示统计
+                // ⌘⌥S - 显示统计
                 if vm.status == .closed {
                     vm.notchOpen(.click)
                 }
                 vm.contentType = .stats
 
             case .showHistory:
-                // ⌘H - 显示历史
+                // ⌘⌥H - 显示历史
                 if vm.status == .closed {
                     vm.notchOpen(.click)
                 }
                 vm.contentType = .history
+
+            case .showAIAnalysis:
+                // ⌘⌥A - 显示AI分析
+                if vm.status == .closed {
+                    vm.notchOpen(.click)
+                }
+                vm.contentType = .aiAnalysis
             }
         }
     }
