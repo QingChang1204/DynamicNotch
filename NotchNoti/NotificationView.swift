@@ -286,25 +286,15 @@ struct NotificationView: View, Equatable {
     }
     
     private func openSummaryWindow() {
-        print("[NotificationView] 点击总结按钮")
-        print("[NotificationView] metadata: \(notification.metadata ?? [:])")
-
         guard let summaryIdString = notification.metadata?["summary_id"],
               let summaryId = UUID(uuidString: summaryIdString) else {
-            print("[NotificationView] ❌ 无法获取 summary_id")
             return
         }
-
-        print("[NotificationView] summary_id: \(summaryId)")
-        print("[NotificationView] recentSummaries count: \(SessionSummaryManager.shared.recentSummaries.count)")
 
         // 从 SessionSummaryManager 中查找总结
         guard let summary = SessionSummaryManager.shared.recentSummaries.first(where: { $0.id == summaryId }) else {
-            print("[NotificationView] ❌ 未找到总结，ID: \(summaryId)")
             return
         }
-
-        print("[NotificationView] ✅ 找到总结: \(summary.projectName)")
 
         // 使用 SummaryWindowController 打开总结窗口
         let projectPath = notification.metadata?["project_path"]
@@ -708,25 +698,15 @@ struct NotificationHistoryItem: View {
     }
 
     private func openSummaryWindow() {
-        print("[NotificationView] 点击总结按钮")
-        print("[NotificationView] metadata: \(notification.metadata ?? [:])")
-
         guard let summaryIdString = notification.metadata?["summary_id"],
               let summaryId = UUID(uuidString: summaryIdString) else {
-            print("[NotificationView] ❌ 无法获取 summary_id")
             return
         }
-
-        print("[NotificationView] summary_id: \(summaryId)")
-        print("[NotificationView] recentSummaries count: \(SessionSummaryManager.shared.recentSummaries.count)")
 
         // 从 SessionSummaryManager 中查找总结
         guard let summary = SessionSummaryManager.shared.recentSummaries.first(where: { $0.id == summaryId }) else {
-            print("[NotificationView] ❌ 未找到总结，ID: \(summaryId)")
             return
         }
-
-        print("[NotificationView] ✅ 找到总结: \(summary.projectName)")
 
         // 使用 SummaryWindowController 打开总结窗口
         let projectPath = notification.metadata?["project_path"]
