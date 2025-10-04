@@ -316,13 +316,16 @@ struct NotificationView: View, Equatable {
         // 创建新窗口显示 DiffView
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
-            styleMask: [.titled, .closable, .resizable],
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
-        
+
         let fileName = URL(fileURLWithPath: filePath).lastPathComponent
         window.title = isPreview ? "改动预览 - \(fileName)" : "文件改动 - \(fileName)"
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.backgroundColor = NSColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 0.95)
         window.center()
         window.setFrameAutosaveName("DiffWindow")
         
@@ -720,13 +723,16 @@ struct NotificationHistoryItem: View {
         // 创建新窗口显示 DiffView
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
-            styleMask: [.titled, .closable, .resizable],
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
-        
+
         let fileName = URL(fileURLWithPath: filePath).lastPathComponent
         window.title = isPreview ? "改动预览 - \(fileName)" : "文件改动 - \(fileName)"
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.backgroundColor = NSColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 0.95)
         window.center()
         window.setFrameAutosaveName("DiffWindow")
         

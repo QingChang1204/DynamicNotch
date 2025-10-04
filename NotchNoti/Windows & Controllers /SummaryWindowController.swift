@@ -41,7 +41,7 @@ class SummaryWindowController: NSObject {
     private func createSummaryWindow(summary: SessionSummary, projectPath: String?) -> NSWindow {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 600),
-            styleMask: [.titled, .closable, .resizable, .miniaturizable],
+            styleMask: [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -49,6 +49,8 @@ class SummaryWindowController: NSObject {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm"
         window.title = "Session总结 - \(summary.projectName) - \(dateFormatter.string(from: summary.startTime))"
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
 
         // 创建状态绑定用于关闭窗口（用于SwiftUI内部的关闭按钮）
         let windowId = ObjectIdentifier(window)
@@ -130,96 +132,201 @@ struct SummaryView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // 顶部工具栏
-            HStack(spacing: 12) {
-                // 保存到默认位置
-                Button(action: saveToDefault) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.down.doc.fill")
-                            .font(.system(size: 14))
-                        Text("保存到项目")
-                            .font(.system(size: 13))
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.blue.opacity(0.15))
-                    .cornerRadius(6)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .help("保存到 项目/docs/sessions/")
+        ZStack {
+            // 背景渐变 - 与刘海风格一致
+            LinearGradient(
+                colors: [
+                    Color(red: 0.15, green: 0.15, blue: 0.15),
+                    Color(red: 0.1, green: 0.1, blue: 0.1)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
-                // 另存为
-                Button(action: presentSavePanel) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "doc.badge.arrow.up")
-                            .font(.system(size: 14))
-                        Text("另存为...")
-                            .font(.system(size: 13))
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.green.opacity(0.15))
-                    .cornerRadius(6)
-                }
-                .buttonStyle(PlainButtonStyle())
+            VStack(spacing: 0) {
+                // 顶部标题栏
+                headerBar
 
-                // 复制到剪贴板
-                Button(action: copyToClipboard) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "doc.on.clipboard")
-                            .font(.system(size: 14))
-                        Text("复制")
-                            .font(.system(size: 13))
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.orange.opacity(0.15))
-                    .cornerRadius(6)
-                }
-                .buttonStyle(PlainButtonStyle())
+                Divider()
+                    .background(Color.white.opacity(0.1))
 
-                Spacer()
+                // 操作工具栏
+                actionToolbar
 
-                // 保存状态提示
-                if let status = saveStatus {
-                    switch status {
-                    case .success(_):
-                        HStack(spacing: 4) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                            Text("已保存")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
-                    case .error(let message):
-                        HStack(spacing: 4) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.red)
-                            Text(message)
-                                .font(.system(size: 11))
-                                .foregroundColor(.red)
-                        }
-                    }
-                }
+                Divider()
+                    .background(Color.white.opacity(0.05))
 
-                // 关闭按钮
-                Button(action: { isPresented = false }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(.secondary)
-                }
-                .buttonStyle(PlainButtonStyle())
+                // Markdown内容区域
+                MarkdownTextView(text: summary.toMarkdown())
             }
-            .padding()
-            .background(Color(NSColor.windowBackgroundColor))
-
-            Divider()
-
-            // Markdown内容区域 - 使用NSTextView提高性能
-            MarkdownTextView(text: summary.toMarkdown())
         }
         .background(WindowAccessor(window: $hostingWindow))
+    }
+
+    // MARK: - 顶部标题栏
+
+    private var headerBar: some View {
+        HStack(spacing: 12) {
+            // 图标和项目信息
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.green, .cyan],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 40, height: 40)
+
+                    Image(systemName: "doc.text.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(summary.projectName)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+
+                    HStack(spacing: 8) {
+                        Text("Session 总结")
+                            .font(.system(size: 11))
+                            .foregroundColor(.white.opacity(0.6))
+
+                        Text("•")
+                            .foregroundColor(.white.opacity(0.3))
+
+                        Text(formatTime(summary.startTime))
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.6))
+                    }
+                }
+            }
+
+            Spacer()
+
+            // 关闭按钮
+            Button(action: { isPresented = false }) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundColor(.white.opacity(0.5))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(Color.black.opacity(0.2))
+    }
+
+    // MARK: - 操作工具栏
+
+    private var actionToolbar: some View {
+        HStack(spacing: 12) {
+            // 保存到默认位置
+            Button(action: saveToDefault) {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.down.doc.fill")
+                        .font(.system(size: 12))
+                    Text("保存到项目")
+                        .font(.system(size: 12, weight: .medium))
+                }
+                .foregroundColor(.white.opacity(0.9))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(
+                    LinearGradient(
+                        colors: [.blue, .cyan],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .opacity(0.2)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                )
+                .cornerRadius(6)
+            }
+            .buttonStyle(.plain)
+            .help("保存到 项目/docs/sessions/")
+
+            // 另存为
+            Button(action: presentSavePanel) {
+                HStack(spacing: 6) {
+                    Image(systemName: "doc.badge.arrow.up")
+                        .font(.system(size: 12))
+                    Text("另存为...")
+                        .font(.system(size: 12, weight: .medium))
+                }
+                .foregroundColor(.white.opacity(0.9))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(6)
+            }
+            .buttonStyle(.plain)
+
+            // 复制到剪贴板
+            Button(action: copyToClipboard) {
+                HStack(spacing: 6) {
+                    Image(systemName: "doc.on.clipboard")
+                        .font(.system(size: 12))
+                    Text("复制")
+                        .font(.system(size: 12, weight: .medium))
+                }
+                .foregroundColor(.white.opacity(0.9))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(6)
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            // 保存状态提示
+            if let status = saveStatus {
+                switch status {
+                case .success(_):
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("已保存")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.green.opacity(0.15))
+                    .cornerRadius(6)
+                case .error(let message):
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.red)
+                        Text(message)
+                            .font(.system(size: 11))
+                            .foregroundColor(.white.opacity(0.8))
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.red.opacity(0.15))
+                    .cornerRadius(6)
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(Color.black.opacity(0.15))
+    }
+
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter.string(from: date)
     }
 
     // MARK: - Actions
@@ -355,12 +462,18 @@ struct MarkdownTextView: NSViewRepresentable {
         let scrollView = NSTextView.scrollableTextView()
         let textView = scrollView.documentView as! NSTextView
 
+        // 深色主题配置
         textView.isEditable = false
         textView.isSelectable = true
         textView.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
-        textView.textColor = NSColor.labelColor
-        textView.backgroundColor = NSColor.textBackgroundColor
+        textView.textColor = NSColor(white: 0.9, alpha: 1.0)  // 浅灰色文字
+        textView.backgroundColor = NSColor(red: 0.12, green: 0.12, blue: 0.12, alpha: 1.0)  // 深色背景
+        textView.insertionPointColor = NSColor.white  // 光标颜色
         textView.string = text
+
+        // 滚动视图样式
+        scrollView.backgroundColor = NSColor(red: 0.12, green: 0.12, blue: 0.12, alpha: 1.0)
+        scrollView.drawsBackground = true
 
         return scrollView
     }

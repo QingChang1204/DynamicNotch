@@ -70,8 +70,8 @@ struct AISettingsWindowView: View {
 
             ScrollView {
                 VStack(spacing: 24) {
-                    // 顶部标题区
-                    HStack(spacing: 12) {
+                    // 顶部标题区 - 统一样式
+                    HStack(spacing: 14) {
                         ZStack {
                             Circle()
                                 .fill(
@@ -81,26 +81,27 @@ struct AISettingsWindowView: View {
                                         endPoint: .bottomTrailing
                                     )
                                 )
-                                .frame(width: 44, height: 44)
+                                .frame(width: 48, height: 48)
+                                .shadow(color: .purple.opacity(0.3), radius: 10, x: 0, y: 4)
 
                             Image(systemName: "sparkles")
-                                .font(.system(size: 20, weight: .semibold))
+                                .font(.system(size: 22, weight: .bold))
                                 .foregroundColor(.white)
                         }
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text("AI 工作洞察")
-                                .font(.system(size: 22, weight: .bold))
+                                .font(.system(size: 20, weight: .bold))
                                 .foregroundColor(.white)
 
                             Text("分析工作模式，优化开发节奏")
-                                .font(.system(size: 13))
-                                .foregroundColor(.white.opacity(0.6))
+                                .font(.system(size: 12))
+                                .foregroundColor(.white.opacity(0.65))
                         }
 
                         Spacer()
                     }
-                    .padding(.top, 40)
+                    .padding(.top, 30)
                     .padding(.horizontal, 24)
 
                     // 启用开关卡片
@@ -299,16 +300,18 @@ struct AISettingsWindowView: View {
                         ProgressView()
                             .scaleEffect(0.7)
                             .frame(width: 14, height: 14)
+                            .tint(.white)
                     } else {
                         Image(systemName: "antenna.radiowaves.left.and.right")
+                            .font(.system(size: 12))
                     }
                     Text("测试连接")
+                        .font(.system(size: 13, weight: .medium))
                 }
-                .font(.system(size: 13, weight: .medium))
                 .foregroundColor(.white.opacity(0.9))
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 18)
                 .padding(.vertical, 10)
-                .background(Color.white.opacity(0.1))
+                .background(Color.white.opacity(0.12))
                 .cornerRadius(8)
             }
             .buttonStyle(.plain)
@@ -316,12 +319,13 @@ struct AISettingsWindowView: View {
 
             Button(action: { saveConfiguration() }) {
                 HStack(spacing: 6) {
-                    Image(systemName: "checkmark")
-                    Text("保存")
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 14))
+                    Text("保存配置")
+                        .font(.system(size: 13, weight: .semibold))
                 }
-                .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.white)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 22)
                 .padding(.vertical, 10)
                 .background(
                     LinearGradient(
@@ -331,6 +335,7 @@ struct AISettingsWindowView: View {
                     )
                 )
                 .cornerRadius(8)
+                .shadow(color: .purple.opacity(0.3), radius: 8, x: 0, y: 4)
             }
             .buttonStyle(.plain)
             .keyboardShortcut(.return, modifiers: .command)
