@@ -247,7 +247,7 @@ class ClaudeCodeSetup {
     
     // 保存最后配置的项目路径
     private var lastConfiguredProjectPath: URL?
-    
+
     // 显示配置结果
     func showSetupResult(_ result: (success: Bool, message: String)) {
         let alert = NSAlert()
@@ -255,13 +255,13 @@ class ClaudeCodeSetup {
         alert.informativeText = result.message
         alert.alertStyle = result.success ? .informational : .warning
         alert.addButton(withTitle: "确定")
-        
+
         if result.success {
             alert.addButton(withTitle: "查看配置文件")
         }
-        
+
         let response = alert.runModal()
-        
+
         if result.success && response == .alertSecondButtonReturn {
             // 打开配置文件所在目录
             if let projectPath = lastConfiguredProjectPath {
@@ -269,5 +269,64 @@ class ClaudeCodeSetup {
                 NSWorkspace.shared.open(claudeDir)
             }
         }
+    }
+
+    // MARK: - MCP Configuration
+
+    // 获取MCP二进制文件路径
+    private func getMCPBinaryPath() -> String {
+        // 动态获取当前运行的app bundle路径
+        if let bundlePath = Bundle.main.bundlePath as String? {
+            return "\(bundlePath)/Contents/MacOS/NotchNoti"
+        }
+        // 回退到默认路径
+        return "/Applications/NotchNoti.app/Contents/MacOS/NotchNoti"
+    }
+
+    // 生成MCP配置JSON字符串
+    func generateMCPConfig() -> String {
+        let mcpPath = getMCPBinaryPath()
+
+        let config: [String: Any] = [
+            "notchnoti": [
+                "type": "stdio",
+                "command": mcpPath,
+                "args": ["--mcp"],
+                "env": [:]
+            ]
+        ]
+
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: config, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+            return String(data: jsonData, encoding: .utf8) ?? "{}"
+        } catch {
+            return "{}"
+        }
+    }
+
+    // 复制MCP配置到剪贴板
+    @discardableResult
+    func copyMCPConfigToClipboard() -> Bool {
+        let config = generateMCPConfig()
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        return pasteboard.setString(config, forType: .string)
+    }
+
+    // 显示MCP配置提示
+    func showMCPConfigCopied() {
+        let alert = NSAlert()
+        alert.messageText = "MCP配置已复制"
+        alert.informativeText = """
+            MCP服务器配置已复制到剪贴板！
+
+            请将此配置粘贴到：
+            ~/.config/claude/config.json
+
+            然后重启Claude Code即可使用MCP功能。
+            """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "确定")
+        alert.runModal()
     }
 }

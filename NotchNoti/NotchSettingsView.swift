@@ -40,15 +40,15 @@ struct NotchSettingsView: View {
             HStack {
                 Text("通知历史记录:")
                     .foregroundColor(.secondary)
-                
+
                 Text("\(notificationManager.notificationHistory.count) / 50")
                     .font(.system(size: 14, weight: .semibold))
-                
+
                 Spacer()
-                
+
                 Text("连接方式:")
                     .foregroundColor(.secondary)
-                
+
                 VStack(alignment: .leading, spacing: 2) {
                     if UnixSocketServerSimple.shared.isRunning {
                         HStack(spacing: 4) {
@@ -61,8 +61,64 @@ struct NotchSettingsView: View {
                         }
                     }
                 }
-                
+
                 Spacer()
+            }
+
+            Divider()
+                .padding(.vertical, 4)
+
+            // Claude Code 集成
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Claude Code 集成")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.primary)
+
+                HStack(spacing: 12) {
+                    // Hooks 配置按钮
+                    Button(action: {
+                        let result = ClaudeCodeSetup.shared.setupClaudeCodeHooks()
+                        ClaudeCodeSetup.shared.showSetupResult(result)
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "link.circle.fill")
+                                .font(.system(size: 12))
+                            Text("配置 Hooks")
+                                .font(.system(size: 11))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.blue.opacity(0.15))
+                        .cornerRadius(6)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+
+                    // MCP 配置复制按钮
+                    Button(action: {
+                        if ClaudeCodeSetup.shared.copyMCPConfigToClipboard() {
+                            ClaudeCodeSetup.shared.showMCPConfigCopied()
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "doc.on.clipboard.fill")
+                                .font(.system(size: 12))
+                            Text("复制 MCP 配置")
+                                .font(.system(size: 11))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.green.opacity(0.15))
+                        .cornerRadius(6)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+
+                    Spacer()
+
+                    // 说明文本
+                    Text("Hooks: 被动监控 | MCP: 主动控制")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
             }
         }
         .padding()

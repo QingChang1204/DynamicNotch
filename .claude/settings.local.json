@@ -6,7 +6,9 @@
       "Bash(hdiutil create:*)",
       "Bash(nc:*)",
       "Read(//Users/liuqingchang/Library/Developer/Xcode/DerivedData/**)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "mcp__notchnoti__notch_show_result",
+      "mcp__notchnoti__notch_show_actionable_result"
     ]
   },
   "hooks": {

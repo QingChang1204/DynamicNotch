@@ -323,6 +323,9 @@
     "API Key" : {
 
     },
+    "Claude Code 集成" : {
+
+    },
     "Clear" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -616,6 +619,9 @@
           }
         }
       }
+    },
+    "Hooks: 被动监控 | MCP: 主动控制" : {
+
     },
     "Hours" : {
       "extractionState" : "manual",
@@ -1208,6 +1214,9 @@
         }
       }
     },
+    "复制 MCP 配置" : {
+
+    },
     "工作模式" : {
 
     },
@@ -1731,6 +1740,9 @@
     "通知总数" : {
 
     },
+    "配置 Hooks" : {
+
+    },
     "配置AI分析" : {
 
     },
@@ -1768,9 +1780,6 @@
           }
         }
       }
-    },
-    "配置Claude Code" : {
-
     },
     "重新分析 %@" : {
 

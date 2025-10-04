@@ -50,7 +50,15 @@ struct NotchMenuView: View {
                     vm.notchClose()
                 }
             }) {
-                Label("配置Claude Code", systemImage: "link.circle")
+                Label("配置 Hooks", systemImage: "link.circle")
+            }
+
+            Button(action: {
+                if ClaudeCodeSetup.shared.copyMCPConfigToClipboard() {
+                    ClaudeCodeSetup.shared.showMCPConfigCopied()
+                }
+            }) {
+                Label("复制 MCP 配置", systemImage: "doc.on.clipboard")
             }
 
             Divider()
