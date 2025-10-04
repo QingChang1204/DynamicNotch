@@ -105,10 +105,25 @@ class NotchMCPServer {
         tools.append(Tool(
             name: "notch_show_actionable_result",
             description: """
-            Display an interactive notification with action buttons in the MacBook notch area.
-            This tool BLOCKS and WAITS for user to click a button (up to 50 seconds timeout).
-            Use this when you need the user to make a choice or confirm an action.
-            Returns the label of the button the user clicked.
+            🎯 异步获取用户反馈 - 当用户可能不在终端时使用
+
+            **使用场景：**
+            1. 📋 **规划确认** - 你有多个实现方案，需要用户选择最合适的
+            2. ⚠️ **重要操作确认** - 删除文件、修改配置等危险操作前
+            3. 🔀 **分支决策** - 遇到问题有多种解决方案，让用户决定
+
+            **为什么用这个而不是直接问？**
+            - 用户可能切换到浏览器/其他应用，看不到终端
+            - 刘海通知非侵入式，用户可以在任何时候看到并响应
+            - 你的问题会被归档，用户可以稍后查看历史
+
+            **何时使用：**
+            - ✅ 当你需要规划并等待用户确认方案时
+            - ✅ 当操作有风险，需要明确确认时
+            - ✅ 当有多个选项，用户需要做决策时
+            - ❌ 不要用于简单的进度通知（用 Hook 就够了）
+
+            **返回值：** 用户点击的按钮文本，或 "timeout"（50秒超时）
             """,
             inputSchema: .object([
                 "type": .string("object"),
@@ -138,10 +153,33 @@ class NotchMCPServer {
         tools.append(Tool(
             name: "notch_show_summary",
             description: """
-            Generate and display a session summary for the current work session.
-            Opens a dedicated window showing completed tasks, modified files, key decisions, and statistics.
-            User can save the summary as a Markdown file to their project's docs folder.
-            Use this at the end of a major task or when user asks for a summary.
+            📝 自动归档工作总结 - 完成代码后主动发送，避免信息丢失
+
+            **核心价值：**
+            终端输出会被刷掉、聊天记录难查找，但刘海总结会被持久化保存！
+
+            **何时使用（主动触发）：**
+            1. ✅ **完成重要功能** - 写了3个以上文件，实现了完整功能
+            2. ✅ **修复复杂bug** - 涉及多个文件的问题定位和修复
+            3. ✅ **重构代码** - 改动较大，需要记录架构决策
+            4. ✅ **用户明确要求** - 用户说"总结一下"、"归档"
+
+            **不要等用户问才总结！完成工作后立即发送！**
+
+            **为什么要用这个？**
+            - 📦 **持久化** - 总结保存在刘海历史，随时可查
+            - 📄 **可导出** - 用户可以保存为 Markdown 文件
+            - 🔍 **易检索** - 按项目、时间分类，比终端输出好找
+            - 🎯 **结构化** - 自动分类：完成任务、修改文件、技术决策
+
+            **最佳实践：**
+            - 完成任务后立即调用，不要等用户要求
+            - 列出所有修改的文件（5个以内详细列，超过5个只列重要的）
+            - 记录技术选型理由（为什么用这个方案而不是那个）
+            - 标注待办事项（还有什么没完成的）
+
+            **示例：**
+            我刚修复了统计视图的5个问题 → 立即调用 → 用户可以保存为 "2025-10-05-统计视图优化.md"
             """,
             inputSchema: .object([
                 "type": .string("object"),
