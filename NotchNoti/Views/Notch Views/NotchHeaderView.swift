@@ -13,8 +13,8 @@ struct NotchHeaderView: View {
     @ObservedObject var notificationManager = NotificationManager.shared
 
     var body: some View {
-        // 统计和AI洞察页面不显示header
-        if vm.contentType == .stats || vm.contentType == .aiAnalysis {
+        // 统计、AI洞察、历史页面不显示header
+        if vm.contentType == .stats || vm.contentType == .aiAnalysis || vm.contentType == .history {
             EmptyView()
         } else {
             HStack {

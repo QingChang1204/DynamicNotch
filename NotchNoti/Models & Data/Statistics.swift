@@ -919,10 +919,13 @@ struct CompactWorkSessionStatsView: View {
             Image(systemName: "xmark.circle.fill")
                 .font(.system(size: 16))
                 .foregroundColor(.white.opacity(0.3))
-                .background(Circle().fill(Color.black.opacity(0.3)))
+                .padding(6)  // 适度的点击区域
+                .background(Circle().fill(Color.black.opacity(0.01)))  // 透明圆形背景
+                .contentShape(Circle())  // 仅圆形区域可点击（避免矩形误触）
         }
         .buttonStyle(PlainButtonStyle())
-        .padding(10)
+        .padding(8)
+        .zIndex(100)  // 确保在最上层
     }
 }
 
@@ -1589,11 +1592,11 @@ struct GlobalStatsView: View {
         ZStack(alignment: .topTrailing) {
             if let stats = stats {
                 VStack(spacing: 0) {
-                    // 顶部筛选器
+                    // 顶部筛选器（增加top padding避开刘海）
                     filterBar
                         .frame(height: 24)
                         .padding(.horizontal, 12)
-                        .padding(.top, 4)
+                        .padding(.top, 12)
 
                     // 主内容区 (三栏布局)
                     HStack(spacing: 12) {
@@ -1645,10 +1648,12 @@ struct GlobalStatsView: View {
             }
             .pickerStyle(.segmented)
             .frame(width: 120)
+            .zIndex(10)  // 提高层级
 
             Spacer()
+                .allowsHitTesting(false)  // 空白区域不响应点击
 
-            // 项目筛选菜单
+            // 项目筛选菜单（紧凑图标设计）
             Menu {
                 Button("全部项目") {
                     selectedProject = nil
@@ -1663,17 +1668,31 @@ struct GlobalStatsView: View {
                 }
             } label: {
                 HStack(spacing: 4) {
-                    Text(stats?.projectName ?? "加载中...")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.6))
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 8))
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(.cyan.opacity(0.7))
+
+                    Text((stats?.projectName ?? "全部").prefix(3))  // 限制最多3个字符
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+                        .lineLimit(1)
+
+                    Image(systemName: "chevron.down.circle.fill")
+                        .font(.system(size: 10))
                         .foregroundColor(.white.opacity(0.4))
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.05))
+                .cornerRadius(6)
             }
             .menuStyle(.borderlessButton)
+            .zIndex(10)  // 提高层级
 
+            // 右侧间距，避免与关闭按钮重叠
             Spacer()
+                .frame(width: 40)  // 为关闭按钮留出空间
+                .allowsHitTesting(false)
         }
     }
 
@@ -1780,10 +1799,13 @@ struct GlobalStatsView: View {
             Image(systemName: "xmark.circle.fill")
                 .font(.system(size: 16))
                 .foregroundColor(.white.opacity(0.3))
-                .background(Circle().fill(Color.black.opacity(0.3)))
+                .padding(6)  // 适度的点击区域
+                .background(Circle().fill(Color.black.opacity(0.01)))  // 透明圆形背景
+                .contentShape(Circle())  // 仅圆形区域可点击（避免矩形误触）
         }
         .buttonStyle(PlainButtonStyle())
-        .padding(10)
+        .padding(8)
+        .zIndex(100)  // 确保在最上层
     }
 
     // MARK: - 辅助方法

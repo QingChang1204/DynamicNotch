@@ -28,25 +28,36 @@ struct CompactNotificationHistoryView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
-                // 顶部栏：关闭按钮 + 搜索框
+                // 顶部栏：搜索框 + 操作按钮
                 if !manager.notificationHistory.isEmpty {
                     HStack(spacing: 8) {
+                        // 搜索栏
+                        searchBar
+
+                        // 清除按钮
+                        Button(action: {
+                            manager.clearHistory()
+                        }) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 13))
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help("清空历史")
+
                         // 关闭按钮
                         Button(action: {
                             NotchViewModel.shared?.returnToNormal()
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: 14))
-                                .foregroundColor(.white.opacity(0.4))
+                                .foregroundColor(.white.opacity(0.5))
                         }
                         .buttonStyle(PlainButtonStyle())
-
-                        // 搜索栏
-                        searchBar
                     }
                     .padding(.horizontal, 12)
                     .padding(.top, 8)
-                    .padding(.bottom, 4)
+                    .padding(.bottom, 6)
                 } else {
                     // 没有通知时，只显示关闭按钮
                     HStack {
@@ -56,7 +67,7 @@ struct CompactNotificationHistoryView: View {
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: 14))
-                                .foregroundColor(.white.opacity(0.4))
+                                .foregroundColor(.white.opacity(0.5))
                         }
                         .buttonStyle(PlainButtonStyle())
                     }
@@ -81,7 +92,7 @@ struct CompactNotificationHistoryView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black.opacity(0.15))
+        .background(Color.black)
     }
 
     // 搜索栏
@@ -107,7 +118,7 @@ struct CompactNotificationHistoryView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(Color.white.opacity(0.08))
+        .background(Color.black.opacity(0.3))
         .cornerRadius(8)
     }
 
