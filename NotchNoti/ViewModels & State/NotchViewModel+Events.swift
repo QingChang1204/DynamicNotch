@@ -11,6 +11,9 @@ import Foundation
 import SwiftUI
 
 extension NotchViewModel {
+    // 需要禁用headline切换的特殊视图（避免每次点击都创建数组）
+    private static let specialViews: Set<ContentType> = [.stats, .aiAnalysis, .settings, .summaryHistory, .history]
+
     func setupCancellables() {
         let events = EventMonitors.shared
         events.mouseDown
@@ -54,8 +57,7 @@ extension NotchViewModel {
                         // for the same height as device notch, open the url of project
                     } else if headlineOpenedRect.contains(mouseLocation) {
                         // 统计、AI洞察、设置等特殊视图禁用headline切换（避免误触）
-                        let specialViews: [ContentType] = [.stats, .aiAnalysis, .settings, .summaryHistory, .history]
-                        if specialViews.contains(contentType) {
+                        if Self.specialViews.contains(contentType) {
                             return
                         }
 
