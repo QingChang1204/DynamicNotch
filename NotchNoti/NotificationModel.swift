@@ -228,6 +228,10 @@ class NotificationManager: ObservableObject {
         addToHistory(notification)
         NotificationStatsManager.shared.recordNotification(notification)
 
+        // 检查用户是否正在浏览其他页面（非主页内容）
+        let userIsViewingOtherContent = NotchViewModel.shared?.contentType != .normal &&
+                                        NotchViewModel.shared?.contentType != .menu
+
         // 检查是否可以合并通知
         if shouldMergeNotification(notification) {
             mergedCount += 1
@@ -264,16 +268,22 @@ class NotificationManager: ObservableObject {
             // 重置合并计数（新的通知序列开始）
             mergedCount = 0
 
-            // 根据优先级处理通知
-            if notification.priority == .urgent {
-                // 紧急通知立即显示
-                processUrgentNotification(notification)
-            } else if showNotification && currentNotification != nil {
-                // 如果正在显示通知，将新通知加入队列
+            // 如果用户正在浏览其他页面（统计/AI分析/设置等），非紧急通知直接入队列
+            if userIsViewingOtherContent && notification.priority != .urgent {
+                print("[NotificationManager] 用户正在浏览其他内容，通知入队列: \(notification.title)")
                 enqueueNotification(notification)
             } else {
-                // 直接显示通知
-                displayNotification(notification)
+                // 根据优先级处理通知
+                if notification.priority == .urgent {
+                    // 紧急通知立即显示（即使用户在看其他内容）
+                    processUrgentNotification(notification)
+                } else if showNotification && currentNotification != nil {
+                    // 如果正在显示通知，将新通知加入队列
+                    enqueueNotification(notification)
+                } else {
+                    // 直接显示通知
+                    displayNotification(notification)
+                }
             }
         }
 
@@ -553,14 +563,31 @@ class NotificationManager: ObservableObject {
             
             // 检查是否有待处理的通知
             if !self.pendingNotifications.isEmpty {
-                // 短暂延迟后显示下一个通知
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-                    self?.showNextNotification()
+                // 检查用户是否正在浏览其他页面
+                let userIsViewingOtherContent = NotchViewModel.shared?.contentType != .normal &&
+                                                NotchViewModel.shared?.contentType != .menu
+
+                if userIsViewingOtherContent {
+                    // 用户正在浏览其他内容，暂时不显示队列中的通知
+                    print("[NotificationManager] 用户正在浏览其他内容，暂不显示队列通知")
+                } else {
+                    // 短暂延迟后显示下一个通知
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+                        self?.showNextNotification()
+                    }
                 }
             } else {
-                // 没有更多通知，关闭刘海
-                print("[NotificationManager] 无待处理通知，关闭刘海")
-                NotchViewModel.shared?.notchClose()
+                // 没有更多通知，检查用户是否在浏览其他内容
+                let userIsViewingOtherContent = NotchViewModel.shared?.contentType != .normal &&
+                                                NotchViewModel.shared?.contentType != .menu
+
+                if !userIsViewingOtherContent {
+                    // 只有在主页面时才关闭刘海
+                    print("[NotificationManager] 无待处理通知，关闭刘海")
+                    NotchViewModel.shared?.notchClose()
+                } else {
+                    print("[NotificationManager] 用户正在浏览其他内容，保持刘海打开")
+                }
             }
         }
     }
@@ -568,7 +595,20 @@ class NotificationManager: ObservableObject {
     func clearHistory() {
         notificationHistory.removeAll()
     }
-    
+
+    /// 当用户返回主页面时，检查并显示待处理的通知
+    func checkAndShowPendingNotifications() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+
+            // 只有在没有正在显示的通知时，才显示队列中的通知
+            if !self.showNotification && !self.pendingNotifications.isEmpty {
+                print("[NotificationManager] 用户返回主页，显示队列中的通知")
+                self.showNextNotification()
+            }
+        }
+    }
+
     func handleAction(_ action: NotificationAction) {
         print("[NotificationManager] Handling action: \(action.action)")
         // TODO: Implement action handling

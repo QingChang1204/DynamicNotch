@@ -472,7 +472,7 @@ struct CompactNotificationStatsView: View {
 
     private var closeButton: some View {
         Button(action: {
-            NotchViewModel.shared?.contentType = .normal
+            NotchViewModel.shared?.returnToNormal()
         }) {
             Image(systemName: "xmark.circle.fill")
                 .font(.system(size: 20))

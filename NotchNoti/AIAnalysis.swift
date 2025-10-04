@@ -583,7 +583,7 @@ struct AIAnalysisView: View {
                 .buttonStyle(PlainButtonStyle())
 
                 Button(action: {
-                    NotchViewModel.shared?.contentType = .normal
+                    NotchViewModel.shared?.returnToNormal()
                 }) {
                     Image(systemName: "xmark")
                         .font(.caption)

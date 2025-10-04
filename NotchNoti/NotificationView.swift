@@ -466,7 +466,7 @@ struct NotificationCenterMainView: View {
                 }
 
                 Button(action: {
-                    NotchViewModel.shared?.contentType = .normal
+                    NotchViewModel.shared?.returnToNormal()
                 }) {
                     Image(systemName: "xmark")
                         .font(.caption)

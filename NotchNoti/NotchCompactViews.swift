@@ -33,7 +33,7 @@ struct CompactNotificationHistoryView: View {
                     HStack(spacing: 8) {
                         // 关闭按钮
                         Button(action: {
-                            NotchViewModel.shared?.contentType = .normal
+                            NotchViewModel.shared?.returnToNormal()
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: 14))
@@ -52,7 +52,7 @@ struct CompactNotificationHistoryView: View {
                     HStack {
                         Spacer()
                         Button(action: {
-                            NotchViewModel.shared?.contentType = .normal
+                            NotchViewModel.shared?.returnToNormal()
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: 14))
@@ -474,7 +474,7 @@ struct CompactAIAnalysisView: View {
 
     private var closeButton: some View {
         Button(action: {
-            NotchViewModel.shared?.contentType = .normal
+            NotchViewModel.shared?.returnToNormal()
         }) {
             Image(systemName: "xmark.circle.fill")
                 .font(.system(size: 16))

@@ -121,4 +121,14 @@ class NotchViewModel: NSObject, ObservableObject {
         openReason = .unknown
         status = .popping
     }
+
+    func returnToNormal() {
+        let wasViewingOtherContent = contentType != .normal && contentType != .menu
+        contentType = .normal
+
+        // 如果用户从其他页面返回，且有待处理的通知，触发显示
+        if wasViewingOtherContent {
+            NotificationManager.shared.checkAndShowPendingNotifications()
+        }
+    }
 }
