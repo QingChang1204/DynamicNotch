@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 NotchNoti is a native macOS application that transforms the MacBook notch area into an intelligent notification center. It displays system notifications in the notch region with 14 unique animated notification types, each with custom visual effects including particle systems, dynamic gradients, and GPU-accelerated animations.
 
-The app integrates with Claude Code via hooks and receives notifications through Unix Domain Sockets (sandbox path) and HTTP (port 9876).
+The app integrates with Claude Code via two mechanisms:
+1. **Hooks** (passive monitoring): Unix Domain Socket server receives event notifications from Rust hook binary
+2. **MCP Server** (active interaction): Model Context Protocol server allows Claude to actively control the notch interface
 
 ## Build Commands
 
@@ -433,3 +435,196 @@ echo '{"title":"Test","message":"Socket working!","type":"success","priority":2}
 - If changing Bundle ID, update `main.rs:105` socket path
 - Verify sandbox container path exists
 - Check CLAUDE_PROJECT_DIR environment variable is set
+
+## MCP (Model Context Protocol) Integration
+
+### Overview
+
+NotchNoti now supports MCP, enabling Claude Code to **actively control** the notch interface, not just passively receive events. This creates a bidirectional communication channel.
+
+### Architecture
+
+**Hook System** (Passive):
+```
+Claude Code → Rust Hook → Unix Socket → NotchNoti
+(Event notifications when I use tools)
+```
+
+**MCP System** (Active):
+```
+Claude Code ⟷ MCP Server (NotchNoti --mcp) ⟷ NotchNoti GUI
+(I can call tools to control the notch)
+```
+
+### Setup
+
+1. **Add MCP SDK dependency** in Xcode:
+   - URL: `https://github.com/modelcontextprotocol/swift-sdk.git`
+   - Version: `0.10.0` or later
+   - Product: `ModelContextProtocol`
+
+2. **Add MCP files to project**:
+   - Add `NotchNoti/MCP/*.swift` to Xcode target
+
+3. **Configure Claude Code** (`~/.config/claude/config.json`):
+```json
+{
+  "mcpServers": {
+    "notchnoti": {
+      "command": "/Applications/NotchNoti.app/Contents/MacOS/NotchNoti",
+      "args": ["--mcp"],
+      "env": {}
+    }
+  }
+}
+```
+
+### MCP Tools
+
+Claude can call these tools to control the notch:
+
+#### 1. `notch_show_progress`
+Display a progress notification with percentage:
+```json
+{
+  "title": "Building project",
+  "progress": 0.65,
+  "cancellable": true
+}
+```
+
+#### 2. `notch_show_result`
+Show an operation result with type-specific styling:
+```json
+{
+  "title": "Build Complete",
+  "type": "success",
+  "message": "15 tests passed in 2.3s",
+  "stats": {"duration": "2.3s", "tests": "15/15"}
+}
+```
+
+Types: `success`, `error`, `warning`, `info`, `celebration`
+
+#### 3. `notch_ask_confirmation`
+Request user confirmation (interactive):
+```json
+{
+  "question": "Delete 3 files?",
+  "options": ["Confirm", "Cancel", "Show Details"]
+}
+```
+
+Returns: `{"choice": "Confirm"}`
+
+### MCP Resources
+
+Claude can read these resources for context:
+
+#### 1. `notch://stats/session`
+Current work session statistics:
+```json
+{
+  "project": "DynamicNotch",
+  "duration": 3600,
+  "activities": 45,
+  "pace": 5.2,
+  "intensity": "🎯 专注",
+  "work_mode": "writing"
+}
+```
+
+#### 2. `notch://notifications/history`
+Recent notification history (last 10):
+```json
+[
+  {
+    "title": "Build Complete",
+    "message": "Success",
+    "type": "success",
+    "timestamp": "2025-10-04T10:30:00Z"
+  }
+]
+```
+
+### Use Cases
+
+**Scenario 1: Long Task Progress**
+```
+Claude: Running build...
+  → notch_show_progress({"title": "Building", "progress": 0})
+  ... build continues ...
+  → notch_show_progress({"progress": 0.5})
+  ... build completes ...
+  → notch_show_result({"type": "success", "title": "Build Complete"})
+```
+
+**Scenario 2: Context-Aware Suggestions**
+```
+Claude: Let me check your work pace
+  → Read resource: notch://stats/session
+  → Analyze: pace = 8.5 (intense)
+  → notch_show_result({
+      "type": "warning",
+      "message": "You've been working intensely for 90 minutes. Consider a break!"
+    })
+```
+
+**Scenario 3: Smart Confirmation**
+```
+User: Delete all test files
+Claude: This will delete 12 files
+  → notch_ask_confirmation({
+      "question": "Delete 12 test files?",
+      "options": ["Confirm", "Cancel", "Show List"]
+    })
+  → User clicks "Confirm"
+  → Proceed with deletion
+```
+
+### Performance Considerations
+
+- **Async/Await**: All MCP operations are async, non-blocking
+- **MainActor**: MCP server runs on main thread for UI safety
+- **Shared State**: MCP and GUI share `NotchViewModel` and managers
+- **Concurrent Requests**: Handled via Swift 6 TaskGroup
+- **Low Latency**: Stdio transport, typically <10ms
+
+### Debugging
+
+**Check MCP server logs**:
+```bash
+# MCP server stdout/stderr goes to Claude Code
+# Look for [MCP] prefixed messages in Claude Code output
+```
+
+**Common issues**:
+- **Tool not found**: Check tool name matches exactly (snake_case)
+- **Invalid arguments**: Verify JSON schema compliance
+- **Server won't start**: Check Swift 6.0+ and ModelContextProtocol framework
+- **No response**: Ensure NotchNoti GUI is running (for shared state)
+
+### Differences: Hook vs MCP
+
+| Feature | Hook (Passive) | MCP (Active) |
+|---------|---------------|--------------|
+| Direction | One-way (Hook → App) | Two-way (Claude ⟷ App) |
+| Trigger | Automatic (on tool use) | Manual (Claude decides) |
+| Use Case | Monitoring, logging | Control, interaction |
+| Data Flow | Events only | Tools + Resources + Prompts |
+| Latency | ~5ms | ~10ms |
+| Complexity | Simple | Rich |
+
+### Future Extensions
+
+Planned MCP tools:
+- `notch_open_view({"view": "stats"})` - Open specific views
+- `notch_set_custom_content({...})` - Display custom SwiftUI
+- `notch_update_progress({...})` - Streaming progress updates
+- `notch_close()` - Programmatically close notch
+
+Planned resources:
+- `notch://diffs/recent` - Recent code changes with previews
+- `notch://errors/patterns` - Recurring error pattern analysis
+- `notch://workspace/context` - Current workspace state
+

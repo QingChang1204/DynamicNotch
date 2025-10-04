@@ -4,7 +4,9 @@
       "Bash(codesign:*)",
       "Bash(/usr/bin/codesign:*)",
       "Bash(hdiutil create:*)",
-      "Bash(nc:*)"
+      "Bash(nc:*)",
+      "Read(//Users/liuqingchang/Library/Developer/Xcode/DerivedData/**)",
+      "Bash(cat:*)"
     ]
   },
   "hooks": {

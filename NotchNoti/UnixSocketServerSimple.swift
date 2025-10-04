@@ -43,6 +43,10 @@ class UnixSocketServerSimple: ObservableObject {
             return
         }
 
+        // 设置 SO_NOSIGPIPE 避免 SIGPIPE 崩溃
+        var on: Int32 = 1
+        setsockopt(serverSocket, SOL_SOCKET, SO_NOSIGPIPE, &on, socklen_t(MemoryLayout<Int32>.size))
+
         // 设置 socket 地址
         var addr = sockaddr_un()
         addr.sun_family = sa_family_t(AF_UNIX)
@@ -133,7 +137,11 @@ class UnixSocketServerSimple: ObservableObject {
     
     private func handleClient(_ clientSocket: Int32) {
         defer { close(clientSocket) }
-        
+
+        // 设置客户端 socket 的 SO_NOSIGPIPE
+        var on: Int32 = 1
+        setsockopt(clientSocket, SOL_SOCKET, SO_NOSIGPIPE, &on, socklen_t(MemoryLayout<Int32>.size))
+
         // 读取数据
         var buffer = [UInt8](repeating: 0, count: 65536)
         let bytesRead = recv(clientSocket, &buffer, buffer.count, 0)
