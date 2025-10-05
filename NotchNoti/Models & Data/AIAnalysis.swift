@@ -164,18 +164,37 @@ class AIAnalysisManager: ObservableObject {
     // 加载配置
     func loadConfig() -> LLMConfig? {
         guard let data = UserDefaults.standard.data(forKey: configKey),
-              let config = try? JSONDecoder().decode(LLMConfig.self, from: data),
+              var config = try? JSONDecoder().decode(LLMConfig.self, from: data),
               config.enabled,
-              !config.baseURL.isEmpty,
-              !config.apiKey.isEmpty else {
+              !config.baseURL.isEmpty else {
             return nil
         }
+
+        // 从Keychain加载API Key (安全存储)
+        if let apiKey = KeychainHelper.load(forKey: KeychainHelper.llmAPIKeyKey), !apiKey.isEmpty {
+            config.apiKey = apiKey
+        } else if !config.apiKey.isEmpty {
+            // 迁移: 如果配置中有API Key,迁移到Keychain
+            _ = KeychainHelper.save(config.apiKey, forKey: KeychainHelper.llmAPIKeyKey)
+        } else {
+            return nil
+        }
+
         return config
     }
 
     // 保存配置
     func saveConfig(_ config: LLMConfig) {
-        if let encoded = try? JSONEncoder().encode(config) {
+        var safeConfig = config
+
+        // API Key存储到Keychain (不存储到UserDefaults)
+        if !config.apiKey.isEmpty {
+            _ = KeychainHelper.save(config.apiKey, forKey: KeychainHelper.llmAPIKeyKey)
+            safeConfig.apiKey = "" // 清空配置中的API Key
+        }
+
+        // 其他配置存储到UserDefaults
+        if let encoded = try? JSONEncoder().encode(safeConfig) {
             UserDefaults.standard.set(encoded, forKey: configKey)
         }
     }
