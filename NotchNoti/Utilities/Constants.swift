@@ -160,10 +160,6 @@ enum MCPConstants {
     /// MCP 工具超时时间 (秒)
     static let toolTimeout: TimeInterval = 50.0
 
-    /// 文件监控检查间隔 (秒) - 已废弃,使用 DispatchSource 零延迟
-    @available(*, deprecated, message: "使用 DispatchSource 文件监控,无需轮询")
-    static let pollingInterval: TimeInterval = 0.1
-
     /// Pending action 存储路径
     static var pendingActionStorePath: String {
         FileManager.default.temporaryDirectory
