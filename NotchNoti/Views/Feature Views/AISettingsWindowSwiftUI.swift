@@ -407,7 +407,7 @@ struct AISettingsWindowView: View {
         }
 
         Task {
-            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            try? await Task.sleep(nanoseconds: UInt64(UIConstants.Delay.settingsReset * 1_000_000_000))
             await MainActor.run {
                 withAnimation {
                     showSaveSuccess = false

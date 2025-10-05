@@ -504,7 +504,7 @@ struct SummaryView: View {
 
         // 2秒后清除状态
         Task {
-            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            try? await Task.sleep(nanoseconds: UInt64(UIConstants.Delay.settingsReset * 1_000_000_000))
             await MainActor.run {
                 saveStatus = nil
             }

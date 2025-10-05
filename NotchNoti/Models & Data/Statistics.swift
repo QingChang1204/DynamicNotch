@@ -148,6 +148,10 @@ class StatisticsManager: ObservableObject {
     private let maxHistoryCount = 20
     private let persistenceKey = "com.notchnoti.workSessions"
 
+    // 缓存机制 (5分钟有效期)
+    private var cachedGlobalStats: [String: (data: GlobalStatistics, timestamp: Date)] = [:]
+    private let cacheValidDuration: TimeInterval = 30  // 0.5分钟
+
     private init() {
         loadHistory()
     }
@@ -169,7 +173,8 @@ class StatisticsManager: ObservableObject {
 
         // 为有意义的session生成AI洞察（异步，不阻塞）
         // 条件：超过10分钟且至少5个活动
-        if session.duration > 600 && session.totalActivities >= 5 {
+        if session.duration > StatisticsConstants.InsightThreshold.minSessionDuration &&
+           session.totalActivities >= StatisticsConstants.InsightThreshold.minActivities {
             Task {
                 _ = await WorkInsightsAnalyzer.shared.analyzeCurrentSession(session)
             }
@@ -183,6 +188,14 @@ class StatisticsManager: ObservableObject {
         let activity = Activity(type: type, tool: toolName, duration: duration)
         session.activities.append(activity)
         currentSession = session
+
+        // 清除缓存 (新活动意味着统计数据已过时)
+        invalidateCache()
+    }
+
+    /// 清除统计缓存
+    private func invalidateCache() {
+        cachedGlobalStats.removeAll()
     }
 
     // 保存历史
@@ -1046,11 +1059,27 @@ struct GlobalStatistics {
 // MARK: - 全局统计管理器扩展
 
 extension StatisticsManager {
-    /// 加载全局统计数据
+    /// 加载全局统计数据 (带5分钟缓存)
     func loadGlobalStatistics(
         range: TimeRange,
         project: String? = nil
     ) async -> GlobalStatistics {
+        // 生成缓存键
+        let cacheKey = "\(range.rawValue)_\(project ?? "all")"
+
+        // 检查缓存
+        if let cached = cachedGlobalStats[cacheKey] {
+            let age = Date().timeIntervalSince(cached.timestamp)
+            if age < cacheValidDuration {
+                // print("[Stats] 💾 使用缓存 (\(Int(age))秒前): \(cacheKey)")
+                return cached.data
+            } else {
+                // print("[Stats] ⏰ 缓存已过期 (\(Int(age))秒): \(cacheKey)")
+            }
+        }
+
+        // print("[Stats] 🔄 重新计算统计数据: \(cacheKey)")
+
         // 定义需要统计的工作相关通知类型
         let statisticsTypes: [NotchNotification.NotificationType] = [
             .toolUse, .warning, .info, .success, .error, .hook
@@ -1198,7 +1227,7 @@ extension StatisticsManager {
             }
             .reduce(0.0) { $0 + $1.duration }
 
-        return GlobalStatistics(
+        let stats = GlobalStatistics(
             timeRange: range,
             selectedProject: project,
             typeDistribution: typeDistribution,
@@ -1211,6 +1240,11 @@ extension StatisticsManager {
             projectName: projectName,
             totalDuration: totalDuration
         )
+
+        // 保存到缓存
+        cachedGlobalStats[cacheKey] = (data: stats, timestamp: Date())
+
+        return stats
     }
 
     /// 获取工具图标

@@ -120,6 +120,18 @@ enum StatisticsConstants {
         /// 最大强度计算基准 (通知数)
         static let maxCountForIntensity = 30
     }
+
+    /// AI洞察分析阈值
+    enum InsightThreshold {
+        /// 最少活动数量 (触发洞察分析)
+        static let minActivities = 5
+
+        /// 最短会话时长 (秒,触发洞察分析)
+        static let minSessionDuration: TimeInterval = 600  // 10分钟
+
+        /// 错误率警告阈值 (百分比)
+        static let maxErrorRatePercent: Double = 15.0
+    }
 }
 
 // MARK: - UI Constants
@@ -151,6 +163,16 @@ enum UIConstants {
         static let normal: CGFloat = 8
         static let relaxed: CGFloat = 12
         static let loose: CGFloat = 16
+    }
+
+    /// UI延迟时间 (秒)
+    enum Delay {
+        static let short: TimeInterval = 0.1
+        static let medium: TimeInterval = 0.5
+        static let long: TimeInterval = 1.0
+        static let exitApp: TimeInterval = 2.0
+        static let settingsReset: TimeInterval = 2.0
+        static let summaryWindow: TimeInterval = 3.0
     }
 }
 
