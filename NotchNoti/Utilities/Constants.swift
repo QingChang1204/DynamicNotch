@@ -11,13 +11,13 @@ import Foundation
 // MARK: - Notification Constants
 
 enum NotificationConstants {
-    /// 内存历史记录最大数量 (UI 显示)
+    /// 内存历史记录最大数量 (UI 显示) - 默认值，实际使用 NotificationConfigManager.maxHistoryCount
     static let maxHistoryCount = 50
 
-    /// 持久化存储最大数量 (CoreData)
-    static let maxPersistentCount = 50_000
+    /// 持久化存储最大数量 (CoreData) - 默认值，实际使用 NotificationConfigManager.maxPersistentCount
+    static let maxPersistentCount = 5000
 
-    /// 通知队列最大长度
+    /// 通知队列最大长度 - 默认值，实际使用 NotificationConfigManager.maxQueueSize
     static let maxQueueSize = 10
 
     /// 默认分页大小

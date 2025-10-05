@@ -198,6 +198,7 @@ actor NotificationManager {
 
     private let repository: NotificationRepository
     private let viewModel: NotchViewModel?
+    private let config: NotificationConfigManager
 
     // 当前显示的通知
     private(set) var currentNotification: NotchNotification?
@@ -224,6 +225,7 @@ actor NotificationManager {
     private init(repository: NotificationRepository = NotificationRepository()) {
         self.repository = repository
         self.viewModel = NotchViewModel.shared
+        self.config = NotificationConfigManager.shared
 
         // 启动时加载缓存
         Task {
@@ -272,15 +274,18 @@ actor NotificationManager {
     }
 
     /// 获取历史记录 (分页)
-    func getHistory(page: Int = 0, pageSize: Int = NotificationConstants.maxHistoryCount) async -> [NotchNotification] {
+    func getHistory(page: Int = 0, pageSize: Int? = nil) async -> [NotchNotification] {
+        // 使用用户配置的历史数量或传入的页面大小
+        let effectivePageSize = pageSize ?? config.maxHistoryCount
+
         // 优先从缓存读取
         if page == 0 {
-            return Array(cachedHistory.prefix(pageSize))
+            return Array(cachedHistory.prefix(effectivePageSize))
         }
 
         // 缓存外的数据从数据库读取
         do {
-            return try await repository.fetch(page: page, pageSize: pageSize)
+            return try await repository.fetch(page: page, pageSize: effectivePageSize)
         } catch {
             print("[NotificationManager] Failed to fetch history: \(error.localizedDescription)")
             return []
@@ -355,7 +360,8 @@ actor NotificationManager {
     /// 清理旧数据
     func cleanup() async {
         do {
-            try await repository.cleanup(keepRecent: NotificationConstants.maxPersistentCount)
+            // 使用用户配置的持久化存储上限
+            try await repository.cleanup(keepRecent: config.maxPersistentCount)
         } catch {
             print("[NotificationManager] Cleanup failed: \(error.localizedDescription)")
         }
@@ -454,7 +460,8 @@ actor NotificationManager {
     /// 加载初始缓存
     private func loadInitialCache() async {
         do {
-            cachedHistory = try await repository.fetch(page: 0, pageSize: NotificationConstants.maxHistoryCount)
+            // 使用用户配置的历史数量
+            cachedHistory = try await repository.fetch(page: 0, pageSize: config.maxHistoryCount)
             print("[NotificationManager] Loaded \(cachedHistory.count) cached notifications")
         } catch {
             print("[NotificationManager] Failed to load cache: \(error.localizedDescription)")
@@ -465,7 +472,8 @@ actor NotificationManager {
     private func updateCache(with notification: NotchNotification) {
         cachedHistory.insert(notification, at: 0)
 
-        if cachedHistory.count > NotificationConstants.maxHistoryCount {
+        // 使用用户配置的历史数量限制缓存大小
+        if cachedHistory.count > config.maxHistoryCount {
             cachedHistory.removeLast()
         }
     }
@@ -525,8 +533,8 @@ actor NotificationManager {
             pendingQueue.append(notification)
         }
 
-        // 限制队列长度
-        if pendingQueue.count > NotificationConstants.maxQueueSize {
+        // 使用用户配置的队列大小限制
+        if pendingQueue.count > config.maxQueueSize {
             pendingQueue.removeLast()
         }
     }
