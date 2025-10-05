@@ -247,16 +247,26 @@ class WorkInsightsAnalyzer: ObservableObject {
 
     // MARK: - 辅助方法
 
-    /// 从通知检测工作模式
+    /// 从通知检测工作模式（深度分析版）
     private func detectWorkPattern(from notifications: [NotchNotification]) -> WorkInsight? {
         guard notifications.count >= 3 else { return nil }
 
-        // 统计工具使用
-        let toolCounts = notifications.compactMap { $0.metadata?["tool_name"] as? String }
-            .reduce(into: [:]) { counts, tool in counts[tool, default: 0] += 1 }
+        // 提取关键信息
+        let toolSequence = notifications.compactMap { $0.metadata?["tool_name"] as? String }
+        let toolCounts = toolSequence.reduce(into: [:]) { counts, tool in counts[tool, default: 0] += 1 }
+
+        // 提取文件路径（如果有）
+        let files = notifications.compactMap { notif -> String? in
+            guard let path = notif.metadata?["file_path"] as? String else { return nil }
+            return URL(fileURLWithPath: path).lastPathComponent
+        }
+        let uniqueFiles = Set(files)
+
+        // 统计成功/失败
+        let successCount = notifications.filter { $0.type == .success || $0.type == .celebration }.count
+        let errorCount = notifications.filter { $0.type == .error }.count
 
         guard !toolCounts.isEmpty else {
-            // 没有工具信息，使用通用描述
             return WorkInsight(
                 type: .workPattern,
                 summary: "最近30分钟有\(notifications.count)个操作",
@@ -265,39 +275,118 @@ class WorkInsightsAnalyzer: ObservableObject {
             )
         }
 
-        let topTool = toolCounts.max(by: { $0.value < $1.value })!.key
-        let topCount = toolCounts[topTool]!
-        let notifCount = notifications.count
-
         // 计算时间跨度
         let timeSpan = notifications.last!.timestamp.timeIntervalSince(notifications.first!.timestamp)
         let minutes = Int(timeSpan / 60)
 
-        // 基于工具类型和频率生成更有价值的描述
+        // 🔍 深度分析：识别工作流模式
+        let workflow = identifyWorkflow(toolSequence: toolSequence)
+
+        // 构建深度总结
         let summary: String
         let suggestions: [String]
 
-        switch topTool.lowercased() {
-        case "read", "grep", "glob":
-            summary = "\(minutes)分钟内阅读/搜索了\(topCount)次，在深入研究代码"
-            suggestions = ["可以边看边做笔记", "理解清楚后再开始修改"]
+        switch workflow {
+        case .research:
+            let searchTools = ["Read", "Grep", "Glob"].filter { toolCounts[$0] != nil }
+            let totalSearches = searchTools.reduce(0) { $0 + (toolCounts[$1] ?? 0) }
 
-        case "edit", "write":
-            summary = "\(minutes)分钟写了\(topCount)个文件，编写代码中"
-            suggestions = ["写完记得测试", "考虑提交一个中间版本"]
-
-        case "bash":
-            summary = "\(minutes)分钟执行了\(topCount)个命令，在调试测试"
-            suggestions = ["观察输出找问题", "确认修复后再继续"]
-
-        default:
-            // 多种工具混合使用
-            if toolCounts.count >= 3 {
-                summary = "\(minutes)分钟用了\(toolCounts.count)种工具，综合工作中"
-                suggestions = ["保持当前节奏", "注意专注度"]
+            if !uniqueFiles.isEmpty {
+                summary = "\(minutes)分钟研究了\(uniqueFiles.count)个文件，执行\(totalSearches)次搜索/阅读"
+                suggestions = [
+                    "📋 涉及文件：\(uniqueFiles.prefix(3).joined(separator: ", "))",
+                    "💡 研究清楚后可以开始修改了",
+                    uniqueFiles.count > 5 ? "⚠️ 涉及文件较多，建议逐个攻破" : "✅ 范围明确，继续深入"
+                ]
             } else {
-                summary = "\(minutes)分钟主要在用\(topTool)（\(topCount)次）"
-                suggestions = ["保持当前节奏"]
+                summary = "\(minutes)分钟内搜索/阅读了\(totalSearches)次，在定位问题"
+                suggestions = ["理解代码结构是关键", "找到关键逻辑后再动手"]
+            }
+
+        case .coding:
+            let editCount = (toolCounts["Edit"] ?? 0) + (toolCounts["Write"] ?? 0)
+            let hasTests = toolCounts["Bash"] != nil || notifications.contains { $0.message.lowercased().contains("test") }
+
+            if !uniqueFiles.isEmpty {
+                summary = "\(minutes)分钟修改了\(uniqueFiles.count)个文件，共\(editCount)次编辑"
+
+                if errorCount > 0 && successCount > 0 {
+                    suggestions = [
+                        "📝 主要文件：\(uniqueFiles.prefix(2).joined(separator: ", "))",
+                        "✅ 经过\(errorCount)次失败后成功了",
+                        hasTests ? "👍 记得继续测试验证" : "⚠️ 建议运行测试验证修改"
+                    ]
+                } else if errorCount > 0 {
+                    suggestions = [
+                        "⚠️ 遇到了\(errorCount)个错误，可能需要调整思路",
+                        "💡 考虑回退到上一个可用版本",
+                        "🔍 仔细检查：\(uniqueFiles.first ?? "当前文件")"
+                    ]
+                } else {
+                    suggestions = [
+                        "✍️ 编码进展顺利，保持节奏",
+                        hasTests ? "✅ 已有测试覆盖" : "📋 接下来记得测试",
+                        uniqueFiles.count > 3 ? "🎯 改动较大，考虑分批提交" : "继续保持"
+                    ]
+                }
+            } else {
+                summary = "\(minutes)分钟编写了\(editCount)个文件"
+                suggestions = ["写完记得测试", "考虑提交一个中间版本"]
+            }
+
+        case .debugging:
+            let bashCount = toolCounts["Bash"] ?? 0
+            let readCount = toolCounts["Read"] ?? 0
+
+            summary = "\(minutes)分钟调试：\(bashCount)次命令执行 + \(readCount)次代码检查"
+
+            if errorCount > successCount {
+                suggestions = [
+                    "🐛 错误率\(errorCount)/\(notifications.count)，建议换个角度",
+                    "💡 可能需要加日志输出定位问题",
+                    "🤔 或者休息一下再继续"
+                ]
+            } else if successCount > 0 {
+                suggestions = [
+                    "✅ 找到问题并修复了！",
+                    "🎯 现在可以进入下一个任务",
+                    "📝 记得提交修复的代码"
+                ]
+            } else {
+                suggestions = [
+                    "🔍 还在定位问题中",
+                    "观察输出找线索",
+                    "必要时添加更多调试信息"
+                ]
+            }
+
+        case .integrated:
+            summary = "\(minutes)分钟综合工作：研究+编码+测试（\(notifications.count)个操作）"
+
+            let phaseDesc = [
+                toolCounts["Read"] != nil || toolCounts["Grep"] != nil ? "✅ 研究" : nil,
+                toolCounts["Edit"] != nil || toolCounts["Write"] != nil ? "✅ 编码" : nil,
+                toolCounts["Bash"] != nil ? "✅ 测试" : nil
+            ].compactMap { $0 }
+
+            if errorCount > 0 && successCount > 0 {
+                suggestions = [
+                    "🎯 完成阶段：\(phaseDesc.joined(separator: " → "))",
+                    "💪 经历\(errorCount)次失败但最终成功了",
+                    "📋 建议现在整理提交代码"
+                ]
+            } else if successCount > 0 {
+                suggestions = [
+                    "🎯 完成：\(phaseDesc.joined(separator: " → "))",
+                    "✅ 进展顺利，继续保持",
+                    uniqueFiles.count > 0 ? "涉及\(uniqueFiles.count)个文件" : "标准工作流"
+                ]
+            } else {
+                suggestions = [
+                    "正在进行：\(phaseDesc.joined(separator: " → "))",
+                    "保持当前节奏",
+                    toolCounts["Bash"] == nil ? "💡 记得测试验证" : "继续观察输出"
+                ]
             }
         }
 
@@ -305,8 +394,45 @@ class WorkInsightsAnalyzer: ObservableObject {
             type: .workPattern,
             summary: summary,
             suggestions: suggestions,
-            confidence: 0.85
+            confidence: 0.90
         )
+    }
+
+    /// 识别工作流类型
+    private func identifyWorkflow(toolSequence: [String]) -> WorkflowType {
+        let toolSet = Set(toolSequence)
+
+        // 研究阶段：主要是 Read/Grep/Glob
+        let researchTools = Set(["Read", "Grep", "Glob"])
+        if toolSet.isSubset(of: researchTools) || toolSet.intersection(researchTools).count >= toolSet.count * 2 / 3 {
+            return .research
+        }
+
+        // 编码阶段：主要是 Edit/Write
+        let codingTools = Set(["Edit", "Write"])
+        if toolSet.isSubset(of: codingTools) || codingTools.intersection(toolSet).count >= 2 {
+            return .coding
+        }
+
+        // 调试阶段：Bash + Read 混合
+        if toolSet.contains("Bash") && (toolSet.contains("Read") || toolSet.contains("Grep")) {
+            return .debugging
+        }
+
+        // 综合工作：多种工具混合
+        if toolSet.count >= 3 {
+            return .integrated
+        }
+
+        return .coding  // 默认
+    }
+
+    /// 工作流类型
+    private enum WorkflowType {
+        case research    // 研究代码
+        case coding      // 编写代码
+        case debugging   // 调试测试
+        case integrated  // 综合工作
     }
 
     /// 分析当前session（兼容旧接口）
