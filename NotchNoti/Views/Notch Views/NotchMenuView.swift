@@ -92,8 +92,10 @@ struct NotchMenuView: View {
             }
 
             Button(action: {
-                // 清空通知统计（新系统）
-                NotificationStatsManager.shared.resetStats()
+                Task {
+                    // 清空通知统计（新系统）
+                    await NotificationStatsManager.shared.resetStats()
+                }
                 // 也清空旧的工作会话统计（保持兼容）
                 StatisticsManager.shared.sessionHistory.removeAll()
                 StatisticsManager.shared.currentSession = nil
@@ -114,8 +116,11 @@ struct NotchMenuView: View {
 
             Button(action: {
                 vm.notchClose()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                    NSApp.terminate(nil)
+                Task {
+                    try? await Task.sleep(nanoseconds: 250_000_000) // 0.25 seconds
+                    await MainActor.run {
+                        NSApp.terminate(nil)
+                    }
                 }
             }) {
                 Label("退出应用", systemImage: "power")

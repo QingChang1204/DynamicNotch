@@ -10,20 +10,20 @@ import SwiftUI
 
 // MARK: - 通知统计管理器
 
-class NotificationStatsManager: ObservableObject {
+@globalActor
+actor NotificationStatsManager {
     static let shared = NotificationStatsManager()
 
-    @Published var stats: NotificationStatistics
+    private var stats: NotificationStatistics
 
     private let persistenceKey = "com.notchnoti.notificationStats"
-    private var lastUpdateTime = Date()
 
     private init() {
         self.stats = NotificationStatsManager.loadStats()
     }
 
-    // 记录新通知
-    func recordNotification(_ notification: NotchNotification) {
+    // 记录新通知 (线程安全)
+    func recordNotification(_ notification: NotchNotification) async {
         stats.totalCount += 1
         stats.lastUpdateTime = Date()
 
@@ -52,8 +52,7 @@ class NotificationStatsManager: ObservableObject {
         }
 
         // 保存统计数据
-        saveStats()
-        objectWillChange.send()
+        await saveStats()
     }
 
     // 分类操作类型
@@ -78,9 +77,9 @@ class NotificationStatsManager: ObservableObject {
     }
 
     // 重置统计
-    func resetStats() {
+    func resetStats() async {
         stats = NotificationStatistics()
-        saveStats()
+        await saveStats()
     }
 
     // 获取时间段
@@ -105,7 +104,7 @@ class NotificationStatsManager: ObservableObject {
     }
 
     // 保存统计数据
-    private func saveStats() {
+    private func saveStats() async {
         if let encoded = try? JSONEncoder().encode(stats) {
             UserDefaults.standard.set(encoded, forKey: persistenceKey)
         }
@@ -120,8 +119,8 @@ class NotificationStatsManager: ObservableObject {
         return decoded
     }
 
-    // 获取统计摘要
-    func getSummary() -> StatsSummary {
+    // 获取统计摘要 (UI访问)
+    func getSummary() async -> StatsSummary {
         let total = stats.totalCount
 
         // 找出最常见的通知类型
@@ -236,22 +235,28 @@ struct StatsSummary {
 // MARK: - 紧凑通知统计视图
 
 struct CompactNotificationStatsView: View {
-    @ObservedObject var statsManager = NotificationStatsManager.shared
+    @State private var summary: StatsSummary?
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            let summary = statsManager.getSummary()
-
-            if summary.totalCount > 0 {
-                statsContent(summary)
+            if let summary = summary {
+                if summary.totalCount > 0 {
+                    statsContent(summary)
+                } else {
+                    emptyState
+                }
             } else {
-                emptyState
+                ProgressView()
+                    .scaleEffect(0.8)
             }
 
             closeButton
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.opacity(0.2))
+        .task {
+            summary = await NotificationStatsManager.shared.getSummary()
+        }
     }
 
     private func statsContent(_ summary: StatsSummary) -> some View {
@@ -360,11 +365,9 @@ struct CompactNotificationStatsView: View {
 
                 // 类型分布TOP3
                 VStack(alignment: .leading, spacing: 4) {
-                    let topTypes = statsManager.stats.typeDistribution
-                        .sorted { $0.value > $1.value }
-                        .prefix(3)
-
-                    ForEach(Array(topTypes), id: \.key) { type, count in
+                    ForEach(summary.top3Types, id: \.type) { item in
+                        let type = item.type
+                        let count = item.count
                         HStack(spacing: 4) {
                             Text(getTypeIcon(type))
                                 .font(.system(size: 9))
