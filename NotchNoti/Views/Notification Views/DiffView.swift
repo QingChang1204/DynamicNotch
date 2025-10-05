@@ -216,17 +216,17 @@ struct DiffView: View {
             return
         }
         
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task.detached(priority: .userInitiated) {
             do {
                 let diffText = try String(contentsOfFile: diffPath, encoding: .utf8)
                 let content = parseDiff(diffText)
-                
-                DispatchQueue.main.async {
+
+                await MainActor.run {
                     self.diffContent = content
                     self.isLoading = false
                 }
             } catch {
-                DispatchQueue.main.async {
+                await MainActor.run {
                     self.errorMessage = "无法读取 diff 文件: \(error.localizedDescription)"
                     self.isLoading = false
                 }

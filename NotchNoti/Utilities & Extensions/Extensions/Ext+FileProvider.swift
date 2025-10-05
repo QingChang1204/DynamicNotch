@@ -51,8 +51,11 @@ extension [NSItemProvider] {
             provider.convertToFilePathThatIsWhatWeThinkItWillWorkWithNotchNoti()
         }
         guard urls.count == count else {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                NSAlert.popError(NSLocalizedString("One or more files failed to load", comment: ""))
+            Task {
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                await MainActor.run {
+                    NSAlert.popError(NSLocalizedString("One or more files failed to load", comment: ""))
+                }
             }
             return nil
         }

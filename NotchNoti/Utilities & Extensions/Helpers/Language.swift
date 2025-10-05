@@ -74,11 +74,14 @@ enum Language: String, CaseIterable, Identifiable, Codable {
 
         Bundle.setLanguage(languageCode)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            NSAlert.popRestart(
-                NSLocalizedString("The language has been changed. The app will restart for the changes to take effect.", comment: ""),
-                completion: restartApp
-            )
+        Task {
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            await MainActor.run {
+                NSAlert.popRestart(
+                    NSLocalizedString("The language has been changed. The app will restart for the changes to take effect.", comment: ""),
+                    completion: restartApp
+                )
+            }
         }
     }
 }
@@ -87,7 +90,8 @@ private func restartApp() {
     guard let appPath = Bundle.main.executablePath else { return }
     NSApp.terminate(nil)
 
-    DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
+    Task.detached {
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         let process = Process()
         process.executableURL = URL(fileURLWithPath: appPath)
         try? process.run()

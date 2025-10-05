@@ -264,8 +264,11 @@ struct NotificationView: View, Equatable {
                 withAnimation(AnimationConstants.urgentPulse) {
                     urgentScale = 1.1
                 }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                    urgentScale = 1.0
+                Task {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                    await MainActor.run {
+                        urgentScale = 1.0
+                    }
                 }
             }
         }

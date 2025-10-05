@@ -353,9 +353,12 @@ struct AnimatedIconView: View {
                                 linkScale = 1.0
                             }
                             // 添加持续的轻微脉冲
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
-                                    linkScale = 1.1
+                            Task {
+                                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                                await MainActor.run {
+                                    withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                                        linkScale = 1.1
+                                    }
                                 }
                             }
                         }
@@ -371,9 +374,12 @@ struct AnimatedIconView: View {
                             withAnimation(.easeInOut(duration: 0.5)) {
                                 toolRotation = 360
                             }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                                    toolRotation = 375
+                            Task {
+                                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                                await MainActor.run {
+                                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                                        toolRotation = 375
+                                    }
                                 }
                             }
                         }
