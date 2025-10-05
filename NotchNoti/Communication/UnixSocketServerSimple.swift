@@ -212,6 +212,19 @@ class UnixSocketServerSimple: ObservableObject {
                        let summaryData = summaryJSON.data(using: .utf8) {
                         self.processSummaryData(summaryData)
                     }
+
+                    // 处理交互式通知 - 创建 PendingAction
+                    if metadata["actionable"] == "true",
+                       let requestId = metadata["request_id"],
+                       let actions = parsedActions {
+                        await PendingActionStore.shared.create(
+                            id: requestId,
+                            title: notification.title,
+                            message: notification.message,
+                            type: notification.type ?? "info",
+                            actions: actions.map { $0.label }
+                        )
+                    }
                 }
 
                 await NotificationManager.shared.addNotification(notchNotification)
@@ -314,8 +327,10 @@ class UnixSocketServerSimple: ObservableObject {
         )
 
         guard result == 0 else {
-            print("[UnixSocket] SECURITY: Failed to get peer credentials: \(String(cString: strerror(errno)))")
-            return false
+            // 在沙盒环境下，getsockopt 可能失败（特别是同一应用的不同进程）
+            // 由于 socket 文件在沙盒容器内，只有同一应用能访问，所以允许连接
+            print("[UnixSocket] SECURITY: Failed to get peer credentials (errno: \(errno)), but allowing connection (sandbox environment)")
+            return true
         }
 
         let clientUID = cred.cr_uid

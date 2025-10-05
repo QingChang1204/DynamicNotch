@@ -391,7 +391,7 @@ struct NotificationView: View, Equatable {
     }
 
     private func sendMCPActionResult(requestId: String, choice: String) {
-        // 发送到 PendingActionStore（MCP 服务器会轮询检查）
+        // 发送到 PendingActionStore（MCP 服务器通过文件监控检测）
         Task {
             await PendingActionStore.shared.setChoice(id: requestId, choice: choice)
         }

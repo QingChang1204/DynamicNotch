@@ -65,7 +65,7 @@ class NotchMCPServer {
         }
 
         // 注册工具调用处理器
-        await server.withMethodHandler(CallTool.self) { @MainActor [weak self] params in
+        await server.withMethodHandler(CallTool.self) { [weak self] params in
             return try await self?.handleToolCall(params) ?? CallTool.Result(content: [])
         }
 
@@ -75,7 +75,7 @@ class NotchMCPServer {
         }
 
         // 注册资源读取处理器
-        await server.withMethodHandler(ReadResource.self) { @MainActor [weak self] params in
+        await server.withMethodHandler(ReadResource.self) { [weak self] params in
             return try await self?.handleResourceRead(params) ?? ReadResource.Result(contents: [])
         }
 
@@ -87,13 +87,13 @@ class NotchMCPServer {
         // 使用 stdio 传输
         let transport = StdioTransport()
 
-        // 启动服务器
+        // 启动服务器（异步，不阻塞）
         try await server.start(transport: transport)
 
         isRunning = true
 
-        // 保持运行
-        await server.waitUntilCompleted()
+        // 不调用 waitUntilCompleted()，让 main.swift 中的 RunLoop.main.run() 保持进程运行
+        // waitUntilCompleted() 会阻塞，导致 Task 无法完成，RunLoop 无法处理 stdio 输入
     }
 
     /// 停止服务器
@@ -296,14 +296,9 @@ class NotchMCPServer {
         // Generate unique request ID
         let requestId = UUID().uuidString
 
-        // Store pending action
-        await PendingActionStore.shared.create(
-            id: requestId,
-            title: title,
-            message: message,
-            type: typeStr,
-            actions: actions
-        )
+        // NOTE: 不在 MCP 进程中创建 pending action！
+        // MCP 进程和 GUI 进程是两个独立的进程，actor 实例不共享
+        // 通过 socket 发送通知，让 GUI 进程创建 pending action
 
         // Map notification type
         let notificationType: NotchNotification.NotificationType = switch typeStr {
@@ -655,7 +650,9 @@ class NotchMCPServer {
             }
         }
 
-        guard result == 0 else { return }
+        guard result == 0 else {
+            return
+        }
 
         // 发送数据 (使用 MSG_NOSIGNAL 标志，但 macOS 不支持，用 SO_NOSIGPIPE 代替)
         _ = message.withCString { cString in

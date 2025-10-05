@@ -26,15 +26,13 @@ class PendingActionWatcher {
         // 确保文件存在
         let fileManager = FileManager.default
         if !fileManager.fileExists(atPath: path) {
-            // 创建空文件
-            fileManager.createFile(atPath: path, contents: Data(), attributes: nil)
+            fileManager.createFile(atPath: path, contents: Data("{}".utf8), attributes: nil)
         }
 
         // 打开文件用于监听（只读模式）
         fileDescriptor = open(path, O_EVTONLY)
 
         guard fileDescriptor >= 0 else {
-            print("[PendingActionWatcher] ERROR: 无法打开文件 \(path), errno: \(errno)")
             return nil
         }
 
@@ -47,7 +45,6 @@ class PendingActionWatcher {
 
         guard let source = source else {
             close(fileDescriptor)
-            print("[PendingActionWatcher] ERROR: 无法创建 DispatchSource")
             return nil
         }
 
@@ -63,8 +60,6 @@ class PendingActionWatcher {
 
         // 启动监控
         source.resume()
-
-        print("[PendingActionWatcher] 开始监控文件: \(path)")
     }
 
     /// 停止监控并清理资源
@@ -75,6 +70,5 @@ class PendingActionWatcher {
 
     deinit {
         stop()
-        print("[PendingActionWatcher] 监控器已释放")
     }
 }

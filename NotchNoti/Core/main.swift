@@ -43,17 +43,21 @@ if isMCPMode {
     // MCP 服务器将通过 Unix Socket 与 GUI 进程通信
     // 不需要初始化 GUI 相关的管理器
 
-    Task { @MainActor in
-        do {
-            try await NotchMCPServer.shared.start()
-        } catch {
-            // 错误输出到 stderr，不影响 stdout
-            fputs("[main] MCP server failed to start: \(error)\n", stderr)
-            exit(1)
+    // 启动 MCP 服务器（在 RunLoop 启动后异步执行）
+    DispatchQueue.main.async {
+        Task {
+            do {
+                try await NotchMCPServer.shared.start()
+            } catch {
+                // 错误输出到 stderr，不影响 stdout
+                fputs("[main] MCP server failed to start: \(error)\n", stderr)
+                exit(1)
+            }
         }
     }
 
-    // 使用简单的 RunLoop 保持运行
+    // 先启动 RunLoop，让主线程开始处理事件
+    // MCP SDK 的 StdioTransport 需要 RunLoop 来处理异步 I/O
     RunLoop.main.run()
 } else {
     // 标准 GUI 模式

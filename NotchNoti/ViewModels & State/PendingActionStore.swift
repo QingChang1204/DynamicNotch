@@ -13,11 +13,11 @@ import Foundation
 actor PendingActionStore {
     static let shared = PendingActionStore()
 
-    // 存储文件路径（在沙盒 tmp 目录）
+    // 存储文件路径（使用 NSHomeDirectory 确保跨进程共享）
     // 使用 nonisolated 暴露给文件监控器使用
     nonisolated let storageURL: URL = {
-        let tmpDir = FileManager.default.temporaryDirectory
-        return tmpDir.appendingPathComponent("notch_pending_actions.json")
+        let containerPath = NSHomeDirectory()
+        return URL(fileURLWithPath: containerPath).appendingPathComponent(".notch_pending_actions.json")
     }()
 
     struct PendingAction: Codable {
@@ -49,7 +49,9 @@ actor PendingActionStore {
 
     private func save(_ actions: [String: PendingAction]) {
         guard let data = try? JSONEncoder().encode(actions) else { return }
-        try? data.write(to: storageURL, options: .atomic)
+        // 不使用 .atomic 以确保文件监控器能检测到变化
+        // .atomic 会导致文件被 rename 替换，使得原文件描述符失效
+        try? data.write(to: storageURL, options: [])
     }
 
     // MARK: - Public API
