@@ -364,8 +364,8 @@ struct CompactNotificationRow: View {
     private func getUserChoice() -> String? {
         // 检查是否是交互式通知
         guard let metadata = notification.metadata,
-              metadata["actionable"] == "true",
-              let requestId = metadata["request_id"] else {
+              metadata[MetadataKeys.actionable] == "true",
+              let requestId = metadata[MetadataKeys.requestId] else {
             return nil
         }
 
@@ -377,7 +377,7 @@ struct CompactNotificationRow: View {
                     let components = action.action.components(separatedBy: ":")
                     if components.count == 3 {
                         // 检查该 action 是否被标记为已选择（存储在 metadata 中）
-                        if metadata["user_choice"] == action.label {
+                        if metadata[MetadataKeys.userChoice] == action.label {
                             return action.label
                         }
                     }

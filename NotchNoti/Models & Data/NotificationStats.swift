@@ -40,7 +40,7 @@ actor NotificationStatsManager {
 
         // 新增：提取工具使用信息
         if let metadata = notification.metadata {
-            if let toolName = metadata["tool_name"] {
+            if let toolName = metadata.toolName {
                 stats.toolUsage[toolName, default: 0] += 1
             }
 
@@ -57,7 +57,7 @@ actor NotificationStatsManager {
 
     // 分类操作类型
     private func classifyAction(notification: NotchNotification, metadata: [String: String]) -> String? {
-        if let toolName = metadata["tool_name"] {
+        if let toolName = metadata.toolName {
             switch toolName {
             case "Edit", "Write", "MultiEdit":
                 return "文件修改"

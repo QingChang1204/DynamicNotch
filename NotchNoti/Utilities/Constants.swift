@@ -255,6 +255,54 @@ enum MetadataKeys {
     static let summaryId = "summary_id"
     static let progress = "progress"
     static let userChoice = "user_choice"
+    static let promptType = "prompt_type"
+    static let promptText = "prompt_text"
+    static let sessionDuration = "session_duration"
+
+    // MARK: - 废弃键名 (仅用于向后兼容)
+
+    /// @deprecated 使用 eventType 代替
+    @available(*, deprecated, renamed: "eventType", message: "使用 MetadataKeys.eventType")
+    static let event = "event"
+
+    /// @deprecated 使用 toolName 代替
+    @available(*, deprecated, renamed: "toolName", message: "使用 MetadataKeys.toolName")
+    static let tool = "tool"
+}
+
+// MARK: - Dictionary扩展 (元数据访问助手)
+
+extension Dictionary where Key == String, Value == String {
+
+    /// 安全获取事件类型 (兼容旧键名)
+    var eventType: String? {
+        return self[MetadataKeys.eventType] ?? self["event"]
+    }
+
+    /// 安全获取工具名称 (兼容旧键名)
+    var toolName: String? {
+        return self[MetadataKeys.toolName] ?? self["tool"]
+    }
+
+    /// 获取项目名称
+    var project: String? {
+        return self[MetadataKeys.project]
+    }
+
+    /// 获取文件路径
+    var filePath: String? {
+        return self[MetadataKeys.filePath]
+    }
+
+    /// 获取diff路径
+    var diffPath: String? {
+        return self[MetadataKeys.diffPath]
+    }
+
+    /// 获取持续时间
+    var duration: TimeInterval? {
+        return self[MetadataKeys.duration].flatMap { TimeInterval($0) }
+    }
 }
 
 // MARK: - Type-Safe Metadata Wrapper

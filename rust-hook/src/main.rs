@@ -99,10 +99,11 @@ impl NotchHook {
 
         fs::create_dir_all(&diff_dir)?;
 
-        // Unix Socket 路径 - 沙盒路径
-        let socket_path = dirs::home_dir()
-            .context("Could not find home directory")?
-            .join("Library/Containers/com.qingchang.notchnoti/Data/.notch.sock");
+        // Unix Socket 路径 - 统一使用 com.qingchang.notchnoti
+        let home_dir = dirs::home_dir()
+            .context("Could not find home directory")?;
+
+        let socket_path = home_dir.join("Library/Containers/com.qingchang.notchnoti/Data/.notch.sock");
 
         if !socket_path.exists() {
             eprintln!("[WARNING] Unix Socket not found at: {}", socket_path.display());
@@ -110,7 +111,7 @@ impl NotchHook {
         } else {
             eprintln!("[DEBUG] Found Unix Socket at: {}", socket_path.display());
         }
-        
+
         Ok(Self {
             project_path,
             project_name,
@@ -1073,8 +1074,8 @@ impl NotchHook {
         metadata.insert("source".to_string(), "claude-code".to_string());
         metadata.insert("project".to_string(), self.project_name.clone());
         metadata.insert("project_path".to_string(), self.project_path.to_string_lossy().to_string());
-        metadata.insert("tool".to_string(), tool_name.to_string());
-        metadata.insert("event".to_string(), "PreToolUse".to_string());
+        metadata.insert("tool_name".to_string(), tool_name.to_string());  // 统一使用 tool_name
+        metadata.insert("event_type".to_string(), "PreToolUse".to_string());  // 统一使用 event_type
         
         if let Some(path) = file_path {
             metadata.insert("file_path".to_string(), path.to_string_lossy().to_string());

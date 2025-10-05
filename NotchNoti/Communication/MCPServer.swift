@@ -597,7 +597,7 @@ class NotchMCPServer {
         ]
         if let metadata = notification.metadata {
             print("[MCP] Metadata before JSON: \(metadata.keys.joined(separator: ", "))")
-            if let summaryData = metadata["summary_data"] {
+            if let summaryData = metadata[MetadataKeys.summaryData] {
                 print("[MCP] summary_data value length: \(summaryData.count) chars")
             }
             json["metadata"] = metadata

@@ -130,7 +130,7 @@ struct NotificationView: View, Equatable {
                     
                     // 如果有改动统计，显示在标题旁边
                     if let metadata = notification.metadata,
-                       metadata["diff_path"] != nil,
+                       metadata.diffPath != nil,
                        notification.message.contains("+") && notification.message.contains("-") {
                         let message = notification.message
                         if let startIndex = message.firstIndex(of: "("),

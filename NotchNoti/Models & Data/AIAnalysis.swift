@@ -257,7 +257,7 @@ class AIAnalysisManager: ObservableObject {
             var projects = Set<String>()
 
             for notification in notifications {
-                if let project = notification.metadata?["project"] {
+                if let project = notification.metadata?.project {
                     projects.insert(project)
                 }
             }
@@ -388,7 +388,7 @@ class AIAnalysisManager: ObservableObject {
 
         for notification in notifications {
             guard let metadata = notification.metadata,
-                  let project = metadata["project"] else {
+                  let project = metadata.project else {
                 continue
             }
 
@@ -402,12 +402,12 @@ class AIAnalysisManager: ObservableObject {
             }
 
             // 收集 diff 路径
-            if let diffPath = metadata["diff_path"] {
+            if let diffPath = metadata.diffPath {
                 projectData[project]?.diffPaths.append(diffPath)
             }
 
             // 收集文件路径
-            if let filePath = metadata["file_path"] {
+            if let filePath = metadata.filePath {
                 let fileName = (filePath as NSString).lastPathComponent
                 if !fileName.isEmpty {
                     projectData[project]?.modifiedFiles.insert(fileName)
@@ -415,7 +415,7 @@ class AIAnalysisManager: ObservableObject {
             }
 
             // 收集操作类型
-            if let toolName = metadata["tool_name"] {
+            if let toolName = metadata.toolName {
                 projectData[project]?.tools[toolName, default: 0] += 1
             }
         }

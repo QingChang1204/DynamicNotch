@@ -200,7 +200,7 @@ class UnixSocketServerSimple: ObservableObject {
                     self.processStatistics(metadata: metadata)
 
                     // 处理总结数据
-                    if let summaryJSON = metadata["summary_data"],
+                    if let summaryJSON = metadata[MetadataKeys.summaryData],
                        let summaryData = summaryJSON.data(using: .utf8) {
                         self.processSummaryData(summaryData)
                     }
@@ -238,21 +238,19 @@ class UnixSocketServerSimple: ObservableObject {
 
     // 处理统计信息
     private func processStatistics(metadata: [String: String]) {
-        // 优先使用 event_type，否则使用 event
-        let eventType = metadata["event_type"] ?? metadata["event"]
-
-        guard let event = eventType else { return }
+        // 使用标准化的键名访问（带向后兼容）
+        guard let event = metadata.eventType else { return }
 
         switch event {
         case "session_start":
-            if let projectName = metadata["project"] {
+            if let projectName = metadata.project {
                 StatisticsManager.shared.startSession(projectName: projectName)
             }
 
         case "tool_use", "tool_success", "tool_complete", "PreToolUse", "PostToolUse":
-            // 从 metadata 中获取工具名称（支持多种字段名）
-            if let toolName = metadata["tool_name"] ?? metadata["tool"] {
-                let duration = metadata["duration"].flatMap { TimeInterval($0) } ?? 0
+            // 从 metadata 中获取工具名称（带向后兼容）
+            if let toolName = metadata.toolName {
+                let duration = metadata.duration ?? 0
                 StatisticsManager.shared.recordActivity(toolName: toolName, duration: duration)
             }
 
