@@ -67,13 +67,17 @@ struct NotchHeaderView: View {
                 .font(.system(.headline, design: .rounded))
             }
         }
-        .task {
-            // Update history count periodically
-            while true {
-                let history = await NotificationManager.shared.getHistory(page: 0, pageSize: 50)
-                historyCount = history.count
-                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+        .onReceive(NotificationCenter.default.publisher(for: .notificationDidUpdate)) { _ in
+            // 响应式更新历史记录数量
+            Task {
+                let updatedHistory = await NotificationManager.shared.getHistory(page: 0, pageSize: 50)
+                historyCount = updatedHistory.count
             }
+        }
+        .task {
+            // 初始加载历史记录数量
+            let history = await NotificationManager.shared.getHistory(page: 0, pageSize: 50)
+            historyCount = history.count
         }
     }
 }

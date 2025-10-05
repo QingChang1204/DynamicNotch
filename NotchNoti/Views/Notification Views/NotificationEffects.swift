@@ -10,8 +10,8 @@ import SwiftUI
 // MARK: - 粒子效果视图（用于 celebration 类型）
 struct ParticleEffectView: View {
     @State private var particles: [Particle] = []
-    let timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
-    
+    @State private var isActive = false  // 控制Timer激活
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -21,8 +21,13 @@ struct ParticleEffectView: View {
             }
             .onAppear {
                 createInitialParticles(in: geometry.size)
+                isActive = true
             }
-            .onReceive(timer) { _ in
+            .onDisappear {
+                isActive = false  // 视图消失时停止更新
+            }
+            .onReceive(Timer.publish(every: isActive ? 0.1 : 3600, on: .main, in: .common).autoconnect()) { _ in
+                guard isActive else { return }
                 updateParticles()
                 if particles.count < 15 { // 限制粒子数量以保持性能
                     addParticle(in: geometry.size)

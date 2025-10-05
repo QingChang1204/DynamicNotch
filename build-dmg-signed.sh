@@ -140,6 +140,22 @@ if [ -n "${SIGN_IDENTITY}" ]; then
     fi
 fi
 
+# 复制 notch-hook 二进制到 app bundle（如果存在）
+if [ -f "${PROJECT_DIR}/notch-hook" ]; then
+    echo "📎 复制 notch-hook 二进制..."
+    cp "${PROJECT_DIR}/notch-hook" "${APP_PATH}/Contents/MacOS/notch-hook"
+    chmod +x "${APP_PATH}/Contents/MacOS/notch-hook"
+
+    # 签名 notch-hook
+    if [ -n "${SIGN_IDENTITY}" ]; then
+        /usr/bin/codesign --force --sign "${SIGN_IDENTITY}" \
+            --options runtime \
+            "${APP_PATH}/Contents/MacOS/notch-hook" 2>&1 || echo "  (notch-hook 签名失败)"
+    fi
+else
+    echo "⚠️  警告: notch-hook 二进制不存在，请先构建 Rust hook"
+fi
+
 # 复制应用到 DMG 目录
 echo "📋 复制应用..."
 cp -R "$APP_PATH" "${DMG_CONTENTS}/"

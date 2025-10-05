@@ -184,7 +184,7 @@ NotchNoti/
 
 **Communication Servers**
 - `UnixSocketServerSimple.swift`: **Primary notification receiver** (BSD socket)
-  - Path: `NSHomeDirectory()/.notch.sock` → `~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock`
+  - Path: `NSHomeDirectory()/.notch.sock` → `~/.notch.sock` (非沙盒应用)
   - Processes statistics metadata from hook events
   - Calls `StatisticsManager.shared` to record session/tool/error data
   - Parses `NotificationRequest` JSON and feeds into `NotificationManager`
@@ -244,7 +244,7 @@ NotchNoti/
 **Rust Hook Binary** (`.claude/hooks/rust-hook/src/main.rs`)
 - Standalone binary embedded in app bundle at `Contents/MacOS/notch-hook`
 - Processes 7 Claude Code hook events: SessionStart, PreToolUse, PostToolUse, Stop, Notification, PreCompact, UserPromptSubmit
-- Socket path: `~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock` (hardcoded Bundle ID)
+- Socket path: `~/.notch.sock` (非沙盒路径)
 - Tracks session timing with `session_start_time: Instant`
 - Sends notifications with statistics metadata (event_type, session_id, tool_name, duration)
 - Filters low-importance operations (echo, ls, pwd, curl localhost:9876)
@@ -261,10 +261,10 @@ NotchNoti/
 - Unified in recent updates for consistency
 
 **Socket Path Resolution**:
-- Swift: Uses `NSHomeDirectory()` which returns sandbox container path in sandboxed builds
-- Rust: Manually constructs path with hardcoded Bundle ID
-- Both resolve to: `~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock`
-- **Note**: No fallback to non-sandbox path currently implemented
+- Swift: Uses `NSHomeDirectory()` which returns user home directory (`~`)
+- Rust: Uses `dirs::home_dir()` for cross-platform home directory resolution
+- Both resolve to: `~/.notch.sock`
+- **Note**: App is NOT sandboxed, uses direct home directory path
 
 **Memory Management**:
 - All timers use `weak var` references to prevent retain cycles
@@ -338,12 +338,12 @@ Each type has unique animations defined in `NotificationEffects.swift`:
 ## Notification API
 
 ### Unix Socket (Primary Method)
-Socket path: `~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock`
+Socket path: `~/.notch.sock`
 
 ```bash
 # Test connection
 echo '{"title":"Test","message":"Hello","type":"success","priority":2}' | \
-  nc -U ~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock
+  nc -U ~/.notch.sock
 ```
 
 **Note**: HTTP server was removed in recent updates. Unix socket is now the only communication method.
@@ -485,11 +485,11 @@ open /Applications/NotchNoti.app  # or run from Xcode
 
 ```bash
 # 1. Check if app is running and socket exists
-ls -la ~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock
+ls -la ~/.notch.sock
 
 # 2. Send test notification
 echo '{"title":"Test","message":"Socket working!","type":"success","priority":2}' | \
-  nc -U ~/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock
+  nc -U ~/.notch.sock
 
 # 3. Monitor hook output (when running from Xcode)
 # Check Xcode console for [UnixSocket], [NotificationManager], [DEBUG] prefixed logs

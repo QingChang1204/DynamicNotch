@@ -242,6 +242,8 @@ actor NotificationManager {
 
     /// 添加新通知
     func addNotification(_ notification: NotchNotification) async {
+        print("[NotificationManager] ✅ addNotification called: \(notification.title)")
+
         // 1. 检查合并
         if shouldMerge(notification) {
             print("[NotificationManager] Merged duplicate notification")
@@ -261,9 +263,11 @@ actor NotificationManager {
         // 4. 决定显示策略
         if currentNotification == nil {
             // 当前无通知,直接显示
+            print("[NotificationManager] No current notification, displaying immediately")
             await displayImmediately(notification)
         } else if shouldInterrupt(current: currentNotification!, new: notification) {
             // 新通知优先级更高,打断当前通知
+            print("[NotificationManager] Interrupting current notification")
             // 将当前通知放回队列头部
             if let current = currentNotification {
                 pendingQueue.insert(current, at: 0)
@@ -271,6 +275,7 @@ actor NotificationManager {
             await displayImmediately(notification)
         } else {
             // 加入队列
+            print("[NotificationManager] Enqueueing notification (queue size: \(pendingQueue.count))")
             enqueue(notification)
         }
 
@@ -362,6 +367,11 @@ actor NotificationManager {
 
         currentNotification = nil
 
+        // 发布通知变化事件
+        await MainActor.run {
+            NotificationCenter.default.post(name: .notificationDidUpdate, object: nil)
+        }
+
         // 决定如何关闭
         if showNext && !pendingQueue.isEmpty {
             // 有待处理的通知，显示下一个
@@ -393,6 +403,11 @@ actor NotificationManager {
             try await repository.clear()
             cachedHistory.removeAll()
             print("[NotificationManager] History cleared")
+
+            // 发布通知变化事件
+            await MainActor.run {
+                NotificationCenter.default.post(name: .notificationDidUpdate, object: nil)
+            }
         } catch {
             print("[NotificationManager] Failed to clear history: \(error.localizedDescription)")
         }
@@ -551,8 +566,13 @@ actor NotificationManager {
     private func displayImmediately(_ notification: NotchNotification) async {
         currentNotification = notification
 
+        print("[NotificationManager] displayImmediately: \(notification.title)")
+
         await MainActor.run {
             viewModel?.notchOpen(.click)
+            // 发布通知变化事件
+            NotificationCenter.default.post(name: .notificationDidUpdate, object: nil)
+            print("[NotificationManager] Posted .notificationDidUpdate event")
         }
 
         // 设置自动隐藏定时器
@@ -639,6 +659,12 @@ actor NotificationManager {
             }
         }
     }
+}
+
+// MARK: - NotificationCenter Names
+
+extension Notification.Name {
+    static let notificationDidUpdate = Notification.Name("com.notchnoti.notificationDidUpdate")
 }
 
 // MARK: - Notification Extension

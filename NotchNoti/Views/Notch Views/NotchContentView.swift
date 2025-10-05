@@ -51,13 +51,22 @@ struct NotchContentView: View {
         }
         .animation(vm.animation, value: vm.contentType)
         .animation(vm.animation, value: showNotification)
-        .task {
-            // Poll for notification updates
-            while true {
-                currentNotification = await NotificationManager.shared.currentNotification
-                showNotification = await NotificationManager.shared.showNotification
-                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+        .onReceive(NotificationCenter.default.publisher(for: .notificationDidUpdate)) { _ in
+            print("[NotchContentView] Received .notificationDidUpdate event")
+            // 响应式更新通知状态
+            Task {
+                let notification = await NotificationManager.shared.currentNotification
+                let shouldShow = await NotificationManager.shared.showNotification
+                print("[NotchContentView] Updated: notification=\(notification?.title ?? "nil"), show=\(shouldShow)")
+                currentNotification = notification
+                showNotification = shouldShow
             }
+        }
+        .task {
+            // 初始加载当前通知状态
+            currentNotification = await NotificationManager.shared.currentNotification
+            showNotification = await NotificationManager.shared.showNotification
+            print("[NotchContentView] Initial load: notification=\(currentNotification?.title ?? "nil"), show=\(showNotification)")
         }
     }
 }
