@@ -875,8 +875,11 @@ struct NotificationConfigWindowView: View {
             Button(action: {
                 configManager.resetAllConfigs()
                 showSaveSuccess = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    showSaveSuccess = false
+                Task {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+                    await MainActor.run {
+                        showSaveSuccess = false
+                    }
                 }
             }) {
                 HStack(spacing: 6) {

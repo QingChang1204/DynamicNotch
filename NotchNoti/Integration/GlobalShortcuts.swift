@@ -71,7 +71,7 @@ class GlobalShortcutManager {
     private func handleHotKey(id: UInt32) {
         guard let shortcut = Shortcut(rawValue: id) else { return }
 
-        DispatchQueue.main.async {
+        Task { @MainActor in
             guard let vm = NotchViewModel.shared else { return }
 
             switch shortcut {

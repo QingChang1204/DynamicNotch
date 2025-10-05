@@ -406,9 +406,12 @@ struct AISettingsWindowView: View {
             showSaveSuccess = true
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            withAnimation {
-                showSaveSuccess = false
+        Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            await MainActor.run {
+                withAnimation {
+                    showSaveSuccess = false
+                }
             }
         }
     }

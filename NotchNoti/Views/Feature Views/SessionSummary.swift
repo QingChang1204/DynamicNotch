@@ -312,7 +312,7 @@ class SessionSummaryManager: ObservableObject {
     // MARK: - Recent Summaries
 
     private func addToRecent(_ summary: SessionSummary) {
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.recentSummaries.insert(summary, at: 0)
             if self.recentSummaries.count > self.maxRecentCount {
                 self.recentSummaries = Array(self.recentSummaries.prefix(self.maxRecentCount))

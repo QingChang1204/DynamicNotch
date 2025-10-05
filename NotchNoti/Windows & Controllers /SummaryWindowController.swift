@@ -441,8 +441,11 @@ struct SummaryView: View {
             saveStatus = .success(suggestedPath.path)
 
             // 3秒后清除状态
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                saveStatus = nil
+            Task {
+                try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+                await MainActor.run {
+                    saveStatus = nil
+                }
             }
 
             // 发送通知
@@ -468,8 +471,11 @@ struct SummaryView: View {
             try SessionSummaryManager.shared.saveSummary(summary, to: url)
             saveStatus = .success(url.path)
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                saveStatus = nil
+            Task {
+                try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+                await MainActor.run {
+                    saveStatus = nil
+                }
             }
 
             let notification = NotchNotification(
@@ -497,8 +503,11 @@ struct SummaryView: View {
         saveStatus = .success("已复制到剪贴板")
 
         // 2秒后清除状态
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            saveStatus = nil
+        Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            await MainActor.run {
+                saveStatus = nil
+            }
         }
     }
 
@@ -534,14 +543,14 @@ struct WindowAccessor: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.window = view.window
         }
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.window = nsView.window
         }
     }

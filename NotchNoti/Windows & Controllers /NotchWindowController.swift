@@ -37,9 +37,12 @@ class NotchWindowController: NSWindowController {
         )
         window.makeKeyAndOrderFront(nil)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak vm] in
-            vm?.screenRect = screen.frame
-            if self.openAfterCreate { vm?.notchOpen(.boot) }
+        Task { [weak vm, weak self] in
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            await MainActor.run {
+                vm?.screenRect = screen.frame
+                if self?.openAfterCreate == true { vm?.notchOpen(.boot) }
+            }
         }
     }
 

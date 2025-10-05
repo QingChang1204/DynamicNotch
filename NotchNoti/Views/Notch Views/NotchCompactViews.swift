@@ -844,8 +844,11 @@ struct CompactSummaryRow: View {
             SummaryWindowController.shared.showSummary(summary, projectPath: nil)
 
             // 延迟关闭notch，避免与新窗口的渲染冲突
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                NotchViewModel.shared?.notchClose()
+            Task {
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                await MainActor.run {
+                    NotchViewModel.shared?.notchClose()
+                }
             }
         }) {
             HStack(spacing: 10) {
