@@ -210,7 +210,14 @@ struct DiffView: View {
             isLoading = false
             return
         }
-        
+
+        // 安全验证：检查路径是否安全
+        if let validationError = FilePathValidator.validatePath(diffPath) {
+            errorMessage = validationError
+            isLoading = false
+            return
+        }
+
         Task.detached(priority: .userInitiated) {
             do {
                 let diffText = try String(contentsOfFile: diffPath, encoding: .utf8)
@@ -264,6 +271,12 @@ struct DiffView: View {
     }
     
     private func openInEditor() {
+        // 安全验证：检查路径是否安全
+        guard FilePathValidator.isPathSafe(filePath) else {
+            print("[Security] Blocked attempt to open file in editor: \(filePath)")
+            return
+        }
+
         if let url = URL(string: "file://\(filePath)") {
             NSWorkspace.shared.open(url)
         }

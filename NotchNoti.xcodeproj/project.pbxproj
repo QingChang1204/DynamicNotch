@@ -69,6 +69,7 @@
 		69F9A6522E8FF2CF009FAEC5 /* NotificationStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A6512E8FF2CF009FAEC5 /* NotificationStats.swift */; };
 		69F9A6542E900365009FAEC5 /* GlobalShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A6532E900365009FAEC5 /* GlobalShortcuts.swift */; };
 		70CB00012E93000000000001 /* CloseButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CB00002E93000000000000 /* CloseButton.swift */; };
+		6614A5F82E4C544100F1FEC2 /* FilePathValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6614A5F72E4C544000F1FEC2 /* FilePathValidator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -147,6 +148,7 @@
 		69F9A6512E8FF2CF009FAEC5 /* NotificationStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationStats.swift; sourceTree = "<group>"; };
 		69F9A6532E900365009FAEC5 /* GlobalShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalShortcuts.swift; sourceTree = "<group>"; };
 		70CB00002E93000000000000 /* CloseButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloseButton.swift; sourceTree = "<group>"; };
+		6614A5F72E4C544000F1FEC2 /* FilePathValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePathValidator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -390,6 +392,7 @@
 				501F0E8B2C59E6BD00F0113C /* Language.swift */,
 				6614A5F52E4C543900F1FEC1 /* PerformanceConfig.swift */,
 				5044EE9F2C3B116000071C5C /* PublishedPersist.swift */,
+				6614A5F72E4C544000F1FEC2 /* FilePathValidator.swift */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -555,6 +558,7 @@
 				6923C7162E92390700ACD8B8 /* StatisticsRepository.swift in Sources */,
 				69076BF32E90DF5500512D9D /* PendingActionStore.swift in Sources */,
 				70CB00012E93000000000001 /* CloseButton.swift in Sources */,
+				6614A5F82E4C544100F1FEC2 /* FilePathValidator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
