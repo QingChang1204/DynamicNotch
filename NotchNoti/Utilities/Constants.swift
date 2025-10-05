@@ -234,7 +234,111 @@ enum MetadataKeys {
     static let requestId = "request_id"
     static let interactive = "interactive"
     static let summaryData = "summary_data"
+    static let summaryId = "summary_id"
+    static let progress = "progress"
     static let userChoice = "user_choice"
+}
+
+// MARK: - Type-Safe Metadata Wrapper
+
+/// 类型安全的元数据包装器
+struct NotificationMetadata {
+    // 核心字段
+    var source: String?
+    var project: String?
+    var projectPath: String?
+
+    // 事件信息
+    var eventType: String?
+    var sessionId: String?
+    var toolName: String?
+    var duration: TimeInterval?
+
+    // 错误信息
+    var errorMessage: String?
+    var context: String?
+
+    // 文件信息
+    var diffPath: String?
+    var filePath: String?
+    var isPreview: Bool?
+
+    // 交互信息
+    var actionable: Bool?
+    var requestId: String?
+    var interactive: Bool?
+
+    // 总结和进度
+    var summaryData: String?
+    var summaryId: String?
+    var progress: Double?
+
+    // 用户选择
+    var userChoice: String?
+
+    // 从字典构造
+    init(from dict: [String: String]?) {
+        guard let dict = dict else { return }
+
+        self.source = dict[MetadataKeys.source]
+        self.project = dict[MetadataKeys.project]
+        self.projectPath = dict[MetadataKeys.projectPath]
+
+        self.eventType = dict[MetadataKeys.eventType]
+        self.sessionId = dict[MetadataKeys.sessionId]
+        self.toolName = dict[MetadataKeys.toolName]
+        self.duration = dict[MetadataKeys.duration].flatMap { TimeInterval($0) }
+
+        self.errorMessage = dict[MetadataKeys.errorMessage]
+        self.context = dict[MetadataKeys.context]
+
+        self.diffPath = dict[MetadataKeys.diffPath]
+        self.filePath = dict[MetadataKeys.filePath]
+        self.isPreview = dict[MetadataKeys.isPreview] == "true"
+
+        self.actionable = dict[MetadataKeys.actionable] == "true"
+        self.requestId = dict[MetadataKeys.requestId]
+        self.interactive = dict[MetadataKeys.interactive] == "true"
+
+        self.summaryData = dict[MetadataKeys.summaryData]
+        self.summaryId = dict[MetadataKeys.summaryId]
+        self.progress = dict[MetadataKeys.progress].flatMap { Double($0) }
+
+        self.userChoice = dict[MetadataKeys.userChoice]
+    }
+
+    // 转换为字典
+    func toDictionary() -> [String: String] {
+        var dict: [String: String] = [:]
+
+        if let source = source { dict[MetadataKeys.source] = source }
+        if let project = project { dict[MetadataKeys.project] = project }
+        if let projectPath = projectPath { dict[MetadataKeys.projectPath] = projectPath }
+
+        if let eventType = eventType { dict[MetadataKeys.eventType] = eventType }
+        if let sessionId = sessionId { dict[MetadataKeys.sessionId] = sessionId }
+        if let toolName = toolName { dict[MetadataKeys.toolName] = toolName }
+        if let duration = duration { dict[MetadataKeys.duration] = String(duration) }
+
+        if let errorMessage = errorMessage { dict[MetadataKeys.errorMessage] = errorMessage }
+        if let context = context { dict[MetadataKeys.context] = context }
+
+        if let diffPath = diffPath { dict[MetadataKeys.diffPath] = diffPath }
+        if let filePath = filePath { dict[MetadataKeys.filePath] = filePath }
+        if let isPreview = isPreview { dict[MetadataKeys.isPreview] = isPreview ? "true" : "false" }
+
+        if let actionable = actionable { dict[MetadataKeys.actionable] = actionable ? "true" : "false" }
+        if let requestId = requestId { dict[MetadataKeys.requestId] = requestId }
+        if let interactive = interactive { dict[MetadataKeys.interactive] = interactive ? "true" : "false" }
+
+        if let summaryData = summaryData { dict[MetadataKeys.summaryData] = summaryData }
+        if let summaryId = summaryId { dict[MetadataKeys.summaryId] = summaryId }
+        if let progress = progress { dict[MetadataKeys.progress] = String(progress) }
+
+        if let userChoice = userChoice { dict[MetadataKeys.userChoice] = userChoice }
+
+        return dict
+    }
 }
 
 // MARK: - Environment Variables

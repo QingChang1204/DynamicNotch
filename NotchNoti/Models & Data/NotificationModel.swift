@@ -132,6 +132,16 @@ struct NotchNotification: Identifiable, Codable, Equatable {
             return "arrow.triangle.2.circlepath"
         }
     }
+
+    /// 生成通知指纹用于去重 (基于类型+标题+消息内容)
+    func contentFingerprint() -> String {
+        "\(type.rawValue)|\(title)|\(message)"
+    }
+
+    /// 类型安全的元数据访问器
+    var typedMetadata: NotificationMetadata {
+        NotificationMetadata(from: metadata)
+    }
 }
 
 struct NotificationAction: Codable, Identifiable, Equatable {
@@ -204,6 +214,10 @@ actor NotificationManager {
     // 合并窗口跟踪
     private var lastNotificationTime: Date?
     private var lastNotificationSource: String?
+
+    // 内容指纹去重 (最近5分钟内的通知指纹)
+    private var recentFingerprints: [(fingerprint: String, timestamp: Date)] = []
+    private let fingerprintWindow: TimeInterval = 300  // 5分钟
 
     // MARK: - Initialization
 
@@ -458,14 +472,35 @@ actor NotificationManager {
 
     /// 判断是否应该合并
     private func shouldMerge(_ notification: NotchNotification) -> Bool {
-        guard let lastTime = lastNotificationTime,
-              let lastSource = lastNotificationSource,
-              let currentSource = notification.metadata?[MetadataKeys.source] else {
-            return false
+        // 策略1: 基于时间窗口 + source (快速去重,0.5秒窗口)
+        if let lastTime = lastNotificationTime,
+           let lastSource = lastNotificationSource,
+           let currentSource = notification.metadata?[MetadataKeys.source] {
+            let timeSinceLast = Date().timeIntervalSince(lastTime)
+            if timeSinceLast < NotificationConstants.mergeTimeWindow && lastSource == currentSource {
+                return true
+            }
         }
 
-        let timeSinceLast = Date().timeIntervalSince(lastTime)
-        return timeSinceLast < NotificationConstants.mergeTimeWindow && lastSource == currentSource
+        // 策略2: 基于内容指纹 (智能去重,5分钟窗口)
+        let fingerprint = notification.contentFingerprint()
+        let now = Date()
+
+        // 清理过期指纹 (5分钟前的)
+        recentFingerprints = recentFingerprints.filter {
+            now.timeIntervalSince($0.timestamp) < fingerprintWindow
+        }
+
+        // 检查是否存在相同指纹
+        if recentFingerprints.contains(where: { $0.fingerprint == fingerprint }) {
+            print("[NotificationManager] Merged duplicate by fingerprint: \(fingerprint)")
+            return true
+        }
+
+        // 记录新指纹
+        recentFingerprints.append((fingerprint, now))
+
+        return false
     }
 
     /// 立即显示通知

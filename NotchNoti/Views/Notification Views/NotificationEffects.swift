@@ -505,8 +505,7 @@ struct AnimatedIconView: View {
 // MARK: - 进度通知视图扩展
 extension NotchNotification {
     var progressValue: Double? {
-        guard let progressString = metadata?["progress"] else { return nil }
-        return Double(progressString)
+        typedMetadata.progress
     }
     
     var hasSpecialBackground: Bool {
