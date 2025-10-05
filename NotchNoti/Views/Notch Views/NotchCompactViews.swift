@@ -12,22 +12,17 @@ import SwiftUI
 struct CompactNotificationHistoryView: View {
     @ObservedObject var manager = NotificationManager.shared
     @State private var searchText = ""
+    @State private var loadedNotifications: [NotchNotification] = []
+    @State private var currentPage = 0
+    @State private var isLoading = false
+    @State private var hasMore = true
+    @State private var totalCount = 0
+
+    private let pageSize = 20  // 每页20条
 
     // 判断是否在历史视图（只有历史视图才显示搜索和清空按钮）
     private var isHistoryView: Bool {
         NotchViewModel.shared?.contentType == .history
-    }
-
-    // 过滤后的通知列表
-    private var filteredNotifications: [NotchNotification] {
-        if searchText.isEmpty {
-            return Array(manager.notificationHistory.prefix(6))
-        } else {
-            return manager.notificationHistory.filter { notification in
-                notification.title.localizedCaseInsensitiveContains(searchText) ||
-                notification.message.localizedCaseInsensitiveContains(searchText)
-            }
-        }
     }
 
     var body: some View {
@@ -84,13 +79,45 @@ struct CompactNotificationHistoryView: View {
                     }
                 }
 
-                if filteredNotifications.isEmpty {
+                if loadedNotifications.isEmpty && !isLoading {
                     emptyState
                 } else {
                     ScrollView(showsIndicators: false) {
                         LazyVStack(spacing: 1) {
-                            ForEach(filteredNotifications) { notification in
+                            ForEach(loadedNotifications) { notification in
                                 CompactNotificationRow(notification: notification)
+                                    .onAppear {
+                                        // 当滚动到倒数第3个时，触发加载下一页
+                                        if notification.id == loadedNotifications[max(0, loadedNotifications.count - 3)].id {
+                                            loadNextPage()
+                                        }
+                                    }
+                            }
+
+                            // 加载指示器
+                            if isLoading {
+                                HStack {
+                                    Spacer()
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                        .progressViewStyle(.circular)
+                                        .tint(.white.opacity(0.5))
+                                    Text("加载中...")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.white.opacity(0.5))
+                                    Spacer()
+                                }
+                                .padding(.vertical, 8)
+                            } else if !hasMore && loadedNotifications.count > 0 {
+                                // 已加载全部
+                                HStack {
+                                    Spacer()
+                                    Text("已加载全部 \(totalCount) 条通知")
+                                        .font(.system(size: 9))
+                                        .foregroundColor(.white.opacity(0.35))
+                                    Spacer()
+                                }
+                                .padding(.vertical, 8)
                             }
                         }
                         .padding(.horizontal, 12)
@@ -102,6 +129,70 @@ struct CompactNotificationHistoryView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black)
+        .onAppear {
+            loadFirstPage()
+        }
+        .onChange(of: searchText) { _ in
+            // 搜索文本变化时，重新加载
+            resetAndLoad()
+        }
+    }
+
+    // MARK: - 分页加载逻辑
+
+    /// 加载第一页
+    private func loadFirstPage() {
+        // 只在历史视图模式下使用持久化存储，其他情况用内存（性能更好）
+        if isHistoryView {
+            // 历史视图：从持久化存储分页加载（5000条）
+            currentPage = 0
+            loadedNotifications = []
+            hasMore = true
+            totalCount = manager.getHistoryCount(searchText: searchText.isEmpty ? nil : searchText)
+            loadNextPage()
+        } else {
+            // 非历史视图：直接用内存中的全部通知（最多50条）
+            loadedNotifications = manager.notificationHistory
+            hasMore = false
+        }
+    }
+
+    /// 重置并重新加载（搜索时使用）
+    private func resetAndLoad() {
+        // 搜索只在历史视图模式下有效
+        if isHistoryView {
+            loadedNotifications = []
+            currentPage = 0
+            hasMore = true
+            totalCount = manager.getHistoryCount(searchText: searchText.isEmpty ? nil : searchText)
+            loadNextPage()
+        }
+    }
+
+    /// 加载下一页
+    private func loadNextPage() {
+        guard !isLoading && hasMore else { return }
+
+        isLoading = true
+
+        Task {
+            let newNotifications = await manager.loadHistoryPage(
+                page: currentPage,
+                pageSize: pageSize,
+                searchText: searchText.isEmpty ? nil : searchText
+            )
+
+            await MainActor.run {
+                if !newNotifications.isEmpty {
+                    loadedNotifications.append(contentsOf: newNotifications)
+                    currentPage += 1
+                    hasMore = newNotifications.count == pageSize
+                } else {
+                    hasMore = false
+                }
+                isLoading = false
+            }
+        }
     }
 
     // 搜索栏

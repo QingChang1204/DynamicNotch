@@ -537,6 +537,70 @@ class NotificationManager: ObservableObject {
         return loadFullHistory()
     }
 
+    // MARK: - 分页加载（高性能）
+
+    /// 异步加载历史记录分页（后台线程解码，避免 UI 卡顿）
+    /// - Parameters:
+    ///   - page: 页码（从0开始）
+    ///   - pageSize: 每页数量
+    ///   - searchText: 可选的搜索关键词
+    /// - Returns: 该页的通知列表
+    func loadHistoryPage(page: Int, pageSize: Int, searchText: String? = nil) async -> [NotchNotification] {
+        return await withCheckedContinuation { continuation in
+            // 在后台线程执行 I/O 和解码
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                guard let self = self else {
+                    continuation.resume(returning: [])
+                    return
+                }
+
+                // 从 UserDefaults 读取并解码（后台线程）
+                guard let data = UserDefaults.standard.data(forKey: self.persistentStorageKey),
+                      let fullHistory = try? JSONDecoder().decode([NotchNotification].self, from: data) else {
+                    continuation.resume(returning: [])
+                    return
+                }
+
+                // 已经按时间降序排列（最新在前）
+                var history = fullHistory
+
+                // 如果有搜索关键词，先过滤
+                if let search = searchText, !search.isEmpty {
+                    history = history.filter { notification in
+                        notification.title.localizedCaseInsensitiveContains(search) ||
+                        notification.message.localizedCaseInsensitiveContains(search)
+                    }
+                }
+
+                // 计算分页范围
+                let startIndex = page * pageSize
+                guard startIndex < history.count else {
+                    continuation.resume(returning: [])
+                    return
+                }
+
+                let endIndex = min(startIndex + pageSize, history.count)
+                let pageData = Array(history[startIndex..<endIndex])
+
+                continuation.resume(returning: pageData)
+            }
+        }
+    }
+
+    /// 获取历史记录总数（用于分页计算）
+    func getHistoryCount(searchText: String? = nil) -> Int {
+        let fullHistory = loadFullHistory()
+
+        if let search = searchText, !search.isEmpty {
+            return fullHistory.filter { notification in
+                notification.title.localizedCaseInsensitiveContains(search) ||
+                notification.message.localizedCaseInsensitiveContains(search)
+            }.count
+        }
+
+        return fullHistory.count
+    }
+
     // 获取过滤后的历史记录（支持日期范围、类型过滤等）
     func getFilteredHistory(
         startDate: Date? = nil,
