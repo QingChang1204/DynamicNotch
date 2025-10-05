@@ -14,7 +14,8 @@ actor PendingActionStore {
     static let shared = PendingActionStore()
 
     // 存储文件路径（在沙盒 tmp 目录）
-    private let storageURL: URL = {
+    // 使用 nonisolated 暴露给文件监控器使用
+    nonisolated let storageURL: URL = {
         let tmpDir = FileManager.default.temporaryDirectory
         return tmpDir.appendingPathComponent("notch_pending_actions.json")
     }()

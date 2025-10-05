@@ -46,6 +46,7 @@
 		691169F32E90BF0D001E60F4 /* MCPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 691169F22E90BF0D001E60F4 /* MCPServer.swift */; };
 		6923C6D12E91C43800ACD8B8 /* NotificationConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6923C6D02E91C43800ACD8B8 /* NotificationConfig.swift */; };
 		6923C6D52E91C64A00ACD8B8 /* NotificationConfigWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6923C6D42E91C64A00ACD8B8 /* NotificationConfigWindow.swift */; };
+		6923C7042E92186C00ACD8B8 /* PendingActionWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6923C7032E92186C00ACD8B8 /* PendingActionWatcher.swift */; };
 		6976430B2E4E3AB400BB17B5 /* ClaudeCodeSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6976430A2E4E3AB400BB17B5 /* ClaudeCodeSetup.swift */; };
 		69DFE6ED2E4B88110051A581 /* DiffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DFE6EC2E4B88110051A581 /* DiffView.swift */; };
 		69F712A32E9171D200F6E709 /* WorkInsights.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F712A22E9171D200F6E709 /* WorkInsights.swift */; };
@@ -111,6 +112,7 @@
 		691169F22E90BF0D001E60F4 /* MCPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPServer.swift; sourceTree = "<group>"; };
 		6923C6D02E91C43800ACD8B8 /* NotificationConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationConfig.swift; sourceTree = "<group>"; };
 		6923C6D42E91C64A00ACD8B8 /* NotificationConfigWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationConfigWindow.swift; sourceTree = "<group>"; };
+		6923C7032E92186C00ACD8B8 /* PendingActionWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingActionWatcher.swift; sourceTree = "<group>"; };
 		6976430A2E4E3AB400BB17B5 /* ClaudeCodeSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCodeSetup.swift; sourceTree = "<group>"; };
 		69DFE6EC2E4B88110051A581 /* DiffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffView.swift; sourceTree = "<group>"; };
 		69F712A22E9171D200F6E709 /* WorkInsights.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkInsights.swift; sourceTree = "<group>"; };
@@ -244,6 +246,7 @@
 		69B2FF872E91320C00C6068C /* ViewModels & State */ = {
 			isa = PBXGroup;
 			children = (
+				6923C7032E92186C00ACD8B8 /* PendingActionWatcher.swift */,
 				504381A72C3A926E000ED325 /* NotchViewModel.swift */,
 				50CB767D2C3BC8880070D5E6 /* NotchViewModel+Events.swift */,
 				69076BF22E90DF5500512D9D /* PendingActionStore.swift */,
@@ -455,6 +458,7 @@
 				504381932C3A8755000ED325 /* main.swift in Sources */,
 				60AD62872C579F4400299297 /* NotchSettingsView.swift in Sources */,
 				6923C6D12E91C43800ACD8B8 /* NotificationConfig.swift in Sources */,
+				6923C7042E92186C00ACD8B8 /* PendingActionWatcher.swift in Sources */,
 				504381A82C3A926E000ED325 /* NotchViewModel.swift in Sources */,
 				5044EEA02C3B116000071C5C /* PublishedPersist.swift in Sources */,
 				50NM00042C6F000000000004 /* NotificationModel.swift in Sources */,
