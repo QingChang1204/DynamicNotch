@@ -11,7 +11,7 @@ import MCP
 
 /// NotchNoti MCP 服务器
 /// 通过 stdio 传输与 Claude Code 通信
-@MainActor
+/// 注意：不使用 @MainActor 避免 50 秒轮询阻塞后续调用
 class NotchMCPServer {
     static let shared = NotchMCPServer()
 
