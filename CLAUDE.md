@@ -10,10 +10,34 @@ The app integrates with Claude Code via two mechanisms:
 1. **Hooks** (passive monitoring): Unix Domain Socket server receives event notifications from Rust hook binary
 2. **MCP Server** (active interaction): Model Context Protocol server allows Claude to actively control the notch interface
 
+## Project Management
+
+### XcodeGen Integration ✅
+
+**IMPORTANT**: This project now uses XcodeGen for project file management. The developer has installed XcodeGen (`brew install xcodegen`).
+
+**Workflow**:
+1. Edit `project.yml` to add files, adjust settings, manage dependencies
+2. Run `xcodegen generate` to regenerate `NotchNoti.xcodeproj`
+3. Open project in Xcode as usual
+
+**Benefits for Claude Code**:
+- Claude can directly modify project structure via YAML (no manual Xcode operations needed)
+- Adding new files: just update `project.yml` sources section
+- Changing build settings: edit YAML instead of navigating Xcode GUI
+- Better version control: `.xcodeproj` is now gitignored (generated file)
+
+**Key Files**:
+- `project.yml` - Single source of truth for project configuration
+- `.gitignore` - Add `*.xcodeproj` and `.xcodegen/`
+
 ## Build Commands
 
 ### Standard Development Build
 ```bash
+# Generate/update Xcode project from YAML (run after changing project.yml)
+xcodegen generate
+
 # Open in Xcode
 open NotchNoti.xcodeproj
 
