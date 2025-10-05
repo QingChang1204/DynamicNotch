@@ -433,8 +433,12 @@ class NotificationManager: ObservableObject {
         // 否则，使用动态计算（基于配置的默认时长）
         var duration = configDuration
 
+        // 交互式通知（等待用户点击）：显示更长时间
+        if notification.metadata?["actionable"] == "true" {
+            duration = 30.0  // 交互式通知显示30秒，给用户充足时间操作
+        }
         // 如果有 diff 信息，延长显示时间
-        if notification.metadata?["diff_path"] != nil {
+        else if notification.metadata?["diff_path"] != nil {
             duration = 2.0  // diff 通知显示更久
         }
 
