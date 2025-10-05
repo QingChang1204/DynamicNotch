@@ -122,9 +122,8 @@ class NotchViewModel: NSObject, ObservableObject {
         contentType = .normal
 
         // 如果用户从其他页面返回，且有待处理的通知，触发显示
-        if wasViewingOtherContent {
-            NotificationManager.shared.checkAndShowPendingNotifications()
-        }
+        // Note: Pending notifications are automatically shown by the manager
+        // No explicit check needed here since the Actor handles it internally
     }
 
     // 更新缓存的 rect（避免在鼠标事件中频繁计算）

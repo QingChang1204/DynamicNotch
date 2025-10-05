@@ -10,12 +10,13 @@ import SwiftUI
 
 struct NotchContentView: View {
     @StateObject var vm: NotchViewModel
-    @ObservedObject var notificationManager = NotificationManager.shared
+    @State private var currentNotification: NotchNotification?
+    @State private var showNotification = false
 
     var body: some View {
         ZStack {
-            if let currentNotification = notificationManager.currentNotification,
-               notificationManager.showNotification {
+            if let currentNotification = currentNotification,
+               showNotification {
                 NotificationView(notification: currentNotification)
                     .transition(.asymmetric(
                         insertion: .push(from: .top).combined(with: .opacity),
@@ -49,7 +50,15 @@ struct NotchContentView: View {
             }
         }
         .animation(vm.animation, value: vm.contentType)
-        .animation(vm.animation, value: notificationManager.showNotification)
+        .animation(vm.animation, value: showNotification)
+        .task {
+            // Poll for notification updates
+            while true {
+                currentNotification = await NotificationManager.shared.currentNotification
+                showNotification = await NotificationManager.shared.showNotification
+                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+            }
+        }
     }
 }
 

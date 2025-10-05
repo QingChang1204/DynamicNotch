@@ -71,7 +71,7 @@ class WorkInsightsAnalyzer: ObservableObject {
     /// 分析最近的工作活动（基于通知历史）
     /// 使用规则检测 + LLM增强的混合智能分析
     func analyzeRecentActivity() async -> WorkInsight? {
-        let notifications = notificationManager.notificationHistory
+        let notifications = await notificationManager.getHistory(page: 0, pageSize: 100)
         guard !notifications.isEmpty else {
             return nil
         }
@@ -104,7 +104,7 @@ class WorkInsightsAnalyzer: ObservableObject {
 
     /// 检测长时间工作（基于通知时间间隔）
     func checkContinuousWork() async -> WorkInsight? {
-        let notifications = notificationManager.notificationHistory.sorted { $0.timestamp > $1.timestamp }
+        let notifications = await notificationManager.getHistory(page: 0, pageSize: 100)
 
         guard notifications.count >= 10 else { return nil }
 
@@ -443,9 +443,9 @@ class WorkInsightsAnalyzer: ObservableObject {
 
     /// 分析一周工作模式（基于通知）
     func analyzeWeeklyPattern(sessions: [WorkSession]) async -> WorkInsight? {
-        let notifications = notificationManager.notificationHistory
+        let allNotifications = await notificationManager.getHistory(page: 0, pageSize: 1000)
         let weekAgo = Date().addingTimeInterval(-7 * 24 * 3600)
-        let weekNotifs = notifications.filter { $0.timestamp >= weekAgo }
+        let weekNotifs = allNotifications.filter { $0.timestamp >= weekAgo }
 
         guard !weekNotifs.isEmpty else { return nil }
 

@@ -10,7 +10,6 @@ import SwiftUI
 
 struct NotchMenuView: View {
     @StateObject var vm: NotchViewModel
-    @ObservedObject var notificationManager = NotificationManager.shared
 
     var body: some View {
         HStack(spacing: vm.spacing * 1.5) {
@@ -84,7 +83,9 @@ struct NotchMenuView: View {
             Divider()
 
             Button(action: {
-                notificationManager.clearHistory()
+                Task {
+                    await NotificationManager.shared.clearHistory()
+                }
                 vm.notchClose()
             }) {
                 Label("清空历史", systemImage: "trash")

@@ -86,7 +86,9 @@ class GlobalShortcutManager {
             case .clearHistory:
                 // ⌘⌥D - 清空历史
                 if vm.status != .closed {
-                    NotificationManager.shared.clearHistory()
+                    Task {
+                        await NotificationManager.shared.clearHistory()
+                    }
                     // 发送反馈
                     vm.hapticSender.send()
                 }

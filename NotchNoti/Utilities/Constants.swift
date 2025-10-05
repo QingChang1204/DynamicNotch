@@ -1,0 +1,262 @@
+//
+//  Constants.swift
+//  NotchNoti
+//
+//  全局常量定义
+//  消除魔法数字,提高代码可读性
+//
+
+import Foundation
+
+// MARK: - Notification Constants
+
+enum NotificationConstants {
+    /// 内存历史记录最大数量 (UI 显示)
+    static let maxHistoryCount = 50
+
+    /// 持久化存储最大数量 (CoreData)
+    static let maxPersistentCount = 50_000
+
+    /// 通知队列最大长度
+    static let maxQueueSize = 10
+
+    /// 默认分页大小
+    static let defaultPageSize = 20
+
+    /// 通知合并时间窗口 (秒)
+    static let mergeTimeWindow: TimeInterval = 0.5
+
+    /// 默认显示时长 (秒)
+    static let defaultDuration: TimeInterval = 1.0
+
+    /// 优先级对应的显示时长
+    enum DurationByPriority {
+        static let urgent: TimeInterval = 2.0
+        static let high: TimeInterval = 1.5
+        static let normal: TimeInterval = 1.0
+        static let low: TimeInterval = 0.8
+    }
+
+    /// 消息长度影响时长的规则
+    enum MessageLengthImpact {
+        /// 每 N 个字符增加额外时间
+        static let charactersPerExtraSecond = 50
+
+        /// 最多增加的额外时间 (秒)
+        static let maxExtraTime: TimeInterval = 2.0
+    }
+
+    /// 交互式通知显示时长 (秒)
+    static let actionableDuration: TimeInterval = 30.0
+
+    /// Diff 通知显示时长 (秒)
+    static let diffDuration: TimeInterval = 2.0
+
+    /// 批量保存防抖延迟 (秒)
+    static let batchSaveDebounce: TimeInterval = 0.1
+}
+
+// MARK: - Socket Constants
+
+enum SocketConstants {
+    /// 最大重试次数
+    static let maxRetries = 3
+
+    /// 重试延迟 (秒)
+    static let retryDelay: TimeInterval = 2.0
+
+    /// 健康检查间隔 (秒)
+    static let healthCheckInterval: TimeInterval = 30.0
+
+    /// 最大请求大小 (bytes)
+    static let maxRequestSize = 1_048_576  // 1MB
+
+    /// Socket 路径
+    static var socketPath: String {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        return "\(home)/Library/Containers/com.qingchang.notchnoti/Data/.notch.sock"
+    }
+
+    /// 接收缓冲区大小 (bytes)
+    static let receiveBufferSize = 65_536  // 64KB
+}
+
+// MARK: - Statistics Constants
+
+enum StatisticsConstants {
+    /// 最大会话历史数量
+    static let maxSessionHistory = 20
+
+    /// 工作强度阈值 (操作/分钟)
+    enum IntensityThreshold {
+        static let intense: Double = 8.0
+        static let focused: Double = 4.0
+        static let steady: Double = 1.0
+    }
+
+    /// 工作模式判断阈值
+    enum WorkModeThreshold {
+        /// 读取操作 vs 写入操作的倍数阈值 (研究模式)
+        static let researchingRatio: Double = 2.0
+
+        /// 执行操作占比阈值 (调试模式)
+        static let debuggingRatio: Double = 1.0 / 3.0
+    }
+
+    /// 时间范围定义 (小时)
+    enum TimeRange {
+        static let day = 24
+        static let week = 7 * 24
+    }
+
+    /// 热力图配置
+    enum HeatMap {
+        /// 每天的时间块数量
+        static let timeBlocksPerDay = 6
+
+        /// 每个时间块的小时数
+        static let hoursPerBlock = 4
+
+        /// 最大强度计算基准 (通知数)
+        static let maxCountForIntensity = 30
+    }
+}
+
+// MARK: - UI Constants
+
+enum UIConstants {
+    /// 刘海打开尺寸
+    static let notchOpenedSize = CGSize(width: 600, height: 160)
+
+    /// 拖拽检测范围 (points)
+    static let dropDetectorRange: CGFloat = 32
+
+    /// 动画参数 (ProMotion 120Hz 优化)
+    enum Animation {
+        static let mass: Double = 0.7
+        static let stiffness: Double = 450
+        static let damping: Double = 28
+    }
+
+    /// 紧凑视图字体大小
+    enum CompactFontSize {
+        static let caption: CGFloat = 10
+        static let caption2: CGFloat = 8
+        static let title: CGFloat = 16
+    }
+
+    /// 间距
+    enum Spacing {
+        static let tight: CGFloat = 4
+        static let normal: CGFloat = 8
+        static let relaxed: CGFloat = 12
+        static let loose: CGFloat = 16
+    }
+}
+
+// MARK: - MCP Constants
+
+enum MCPConstants {
+    /// MCP 工具超时时间 (秒)
+    static let toolTimeout: TimeInterval = 50.0
+
+    /// 文件监控检查间隔 (秒) - 已废弃,使用 DispatchSource 零延迟
+    @available(*, deprecated, message: "使用 DispatchSource 文件监控,无需轮询")
+    static let pollingInterval: TimeInterval = 0.1
+
+    /// Pending action 存储路径
+    static var pendingActionStorePath: String {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent("notch_pending_actions.json")
+            .path
+    }
+}
+
+// MARK: - Performance Constants
+
+enum PerformanceConstants {
+    /// 分页加载页面大小
+    static let defaultPageSize = 20
+
+    /// CoreData 批量操作大小
+    static let batchSize = 100
+
+    /// 搜索去抖延迟 (秒)
+    static let searchDebounce: TimeInterval = 0.3
+
+    /// 内存警告时清理的对象数量
+    static let memoryWarningCleanupCount = 100
+}
+
+// MARK: - File Constants
+
+enum FileConstants {
+    /// Diff 文件存储路径
+    static func diffDirectory(for project: String) -> String {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        return appSupport
+            .appendingPathComponent("NotchNoti")
+            .appendingPathComponent("diffs")
+            .appendingPathComponent(project)
+            .path
+    }
+
+    /// PID 文件路径
+    static var pidFilePath: String {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent("notchnoti.pid")
+            .path
+    }
+
+    /// 最大 diff 文件保留数量
+    static let maxDiffFiles = 100
+
+    /// Diff 文件过期时间 (天)
+    static let diffExpirationDays = 7
+}
+
+// MARK: - Metadata Keys
+
+enum MetadataKeys {
+    static let source = "source"
+    static let project = "project"
+    static let projectPath = "project_path"
+    static let eventType = "event_type"
+    static let sessionId = "session_id"
+    static let toolName = "tool_name"
+    static let duration = "duration"
+    static let errorMessage = "error_message"
+    static let context = "context"
+    static let diffPath = "diff_path"
+    static let filePath = "file_path"
+    static let isPreview = "is_preview"
+    static let actionable = "actionable"
+    static let requestId = "request_id"
+    static let interactive = "interactive"
+    static let summaryData = "summary_data"
+    static let userChoice = "user_choice"
+}
+
+// MARK: - Environment Variables
+
+enum EnvironmentVariables {
+    /// Socket 路径覆盖
+    static var socketPath: String? {
+        ProcessInfo.processInfo.environment["NOTCH_SOCKET_PATH"]
+    }
+
+    /// 项目目录
+    static var projectDirectory: String? {
+        ProcessInfo.processInfo.environment["CLAUDE_PROJECT_DIR"]
+    }
+
+    /// 是否为测试模式
+    static var isTestMode: Bool {
+        ProcessInfo.processInfo.environment["NOTCH_TEST_MODE"] == "1"
+    }
+
+    /// 日志级别
+    static var logLevel: String {
+        ProcessInfo.processInfo.environment["NOTCH_LOG_LEVEL"] ?? "info"
+    }
+}

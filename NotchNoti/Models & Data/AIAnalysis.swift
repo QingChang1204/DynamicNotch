@@ -233,20 +233,24 @@ class AIAnalysisManager: ObservableObject {
 
     // 更新可用项目列表
     func updateAvailableProjects() {
-        let notifications = NotificationManager.shared.notificationHistory
-        var projects = Set<String>()
+        Task {
+            let notifications = await NotificationManager.shared.getHistory(page: 0, pageSize: 100)
+            var projects = Set<String>()
 
-        for notification in notifications {
-            if let project = notification.metadata?["project"] {
-                projects.insert(project)
+            for notification in notifications {
+                if let project = notification.metadata?["project"] {
+                    projects.insert(project)
+                }
             }
-        }
 
-        availableProjects = Array(projects).sorted()
+            await MainActor.run {
+                availableProjects = Array(projects).sorted()
 
-        // 如果当前没有选中项目，默认选中第一个
-        if selectedProject == nil && !availableProjects.isEmpty {
-            selectedProject = availableProjects[0]
+                // 如果当前没有选中项目，默认选中第一个
+                if selectedProject == nil && !availableProjects.isEmpty {
+                    selectedProject = availableProjects[0]
+                }
+            }
         }
     }
 
@@ -272,7 +276,7 @@ class AIAnalysisManager: ObservableObject {
         lastError = nil
 
         // 生成通知统计摘要（传入选中的项目）
-        let notifSummary = generateNotificationSummary(summary, projectFilter: selectedProject)
+        let notifSummary = await generateNotificationSummary(summary, projectFilter: selectedProject)
 
         // 检查是否有足够数据
         if notifSummary.contains("【数据不足】") {
@@ -357,8 +361,8 @@ class AIAnalysisManager: ObservableObject {
     }
 
     // 生成项目工作总结（基于通知历史和 diff 文件）
-    private func generateNotificationSummary(_ summary: StatsSummary, projectFilter: String?) -> String {
-        let notifications = NotificationManager.shared.notificationHistory
+    private func generateNotificationSummary(_ summary: StatsSummary, projectFilter: String?) async -> String {
+        let notifications = await NotificationManager.shared.getHistory(page: 0, pageSize: 200)
 
         // 按项目分组通知
         var projectData: [String: ProjectAnalysis] = [:]

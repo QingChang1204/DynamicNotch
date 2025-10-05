@@ -373,16 +373,7 @@ struct ConfigExport: Codable {
 }
 
 // MARK: - NotificationType Extension
-extension NotchNotification.NotificationType: CaseIterable {
-    public static var allCases: [NotchNotification.NotificationType] {
-        return [
-            .info, .success, .warning, .error,
-            .hook, .toolUse, .progress, .celebration,
-            .reminder, .download, .upload, .security,
-            .ai, .sync
-        ]
-    }
-
+extension NotchNotification.NotificationType {
     var localizedName: String {
         switch self {
         case .info: return "信息"

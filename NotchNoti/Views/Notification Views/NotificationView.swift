@@ -31,9 +31,10 @@ struct NotificationView: View, Equatable {
     @State private var isVisible = false
     @State private var pulseEffect = false
     @State private var urgentScale: CGFloat = 1.0
-    @ObservedObject var manager = NotificationManager.shared
+    @State private var mergedCount = 0
+    @State private var pendingCount = 0
     @Environment(\.colorScheme) var colorScheme
-    
+
     // 实现 Equatable 以优化重渲染
     static func == (lhs: NotificationView, rhs: NotificationView) -> Bool {
         lhs.notification.id == rhs.notification.id &&
@@ -87,7 +88,7 @@ struct NotificationView: View, Equatable {
                             .scaleEffect(urgentScale)
                             .shadow(color: notification.priority == .urgent ? notification.color.opacity(0.5) : .clear,
                                     radius: notification.priority == .urgent ? 8 : 0)
-                            .animation(AnimationConstants.springSmooth, value: manager.mergedCount)
+                            .animation(AnimationConstants.springSmooth, value: mergedCount)
                     }
 
                     // 进度指示器（用于上传/下载）
@@ -98,11 +99,11 @@ struct NotificationView: View, Equatable {
                     }
 
                     // 合并数量徽章
-                    if manager.mergedCount > 0 {
+                    if mergedCount > 0 {
                         VStack {
                             HStack {
                                 Spacer()
-                                Text("\(manager.mergedCount + 1)")
+                                Text("\(mergedCount + 1)")
                                     .font(.system(size: 9, weight: .bold, design: .rounded))
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 5)
@@ -167,15 +168,15 @@ struct NotificationView: View, Equatable {
                         }
                     }
                     
-                    if manager.mergedCount > 0 {
-                        Text("(\(manager.mergedCount + 1))")
+                    if mergedCount > 0 {
+                        Text("(\(mergedCount + 1))")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.secondary)
                             .transition(.scale.combined(with: .opacity))
                     }
                     
-                    if !manager.pendingNotifications.isEmpty {
-                        Text("• \(manager.pendingNotifications.count) pending")
+                    if pendingCount > 0 {
+                        Text("• \(pendingCount) pending")
                             .font(.system(size: 10))
                             .foregroundColor(.orange)
                             .transition(.opacity)
@@ -206,7 +207,9 @@ struct NotificationView: View, Equatable {
             if notification.metadata?["summary_id"] != nil {
                 Button(action: {
                     openSummaryWindow()
-                    manager.cancelHideTimer()
+                    Task {
+                        await NotificationManager.shared.cancelHideTimer()
+                    }
                 }) {
                     Image(systemName: "doc.text.fill")
                         .font(.system(size: 14))
@@ -221,7 +224,9 @@ struct NotificationView: View, Equatable {
                 Button(action: {
                     openDiffWindow()
                     // 点击查看 diff 时，取消自动隐藏
-                    manager.cancelHideTimer()
+                    Task {
+                        await NotificationManager.shared.cancelHideTimer()
+                    }
                 }) {
                     Image(systemName: "doc.text.magnifyingglass")
                         .font(.system(size: 14))
@@ -233,8 +238,8 @@ struct NotificationView: View, Equatable {
 
             // 添加关闭按钮
             Button(action: {
-                withAnimation(AnimationConstants.notificationHide) {
-                    manager.hideCurrentNotification()
+                Task {
+                    await NotificationManager.shared.hideCurrentNotification()
                 }
             }) {
                 Image(systemName: "xmark.circle.fill")
@@ -265,13 +270,15 @@ struct NotificationView: View, Equatable {
             }
         }
         .onHover { hovering in
-            if hovering {
-                // 鼠标悬停时取消自动隐藏
-                manager.cancelHideTimer()
-            } else {
-                // 鼠标离开时重新开始计时（如果通知还在显示）
-                if manager.showNotification {
-                    manager.restartHideTimer()
+            Task {
+                if hovering {
+                    // 鼠标悬停时取消自动隐藏
+                    await NotificationManager.shared.cancelHideTimer()
+                } else {
+                    // 鼠标离开时重新开始计时（如果通知还在显示）
+                    if await NotificationManager.shared.showNotification {
+                        await NotificationManager.shared.restartHideTimer()
+                    }
                 }
             }
         }
@@ -362,7 +369,9 @@ struct NotificationView: View, Equatable {
 
             // 隐藏当前通知
             withAnimation(AnimationConstants.notificationHide) {
-                manager.hideCurrentNotification()
+                Task {
+                    await NotificationManager.shared.hideCurrentNotification()
+                }
             }
         } else {
             // 处理其他类型的 action
@@ -372,7 +381,9 @@ struct NotificationView: View, Equatable {
 
     private func updateNotificationWithChoice(choice: String) {
         // 更新当前通知的 metadata，添加用户选择
-        manager.recordUserChoice(for: notification.id, choice: choice)
+        Task {
+            await NotificationManager.shared.recordUserChoice(for: notification.id, choice: choice)
+        }
     }
 
     private func sendMCPActionResult(requestId: String, choice: String) {
@@ -401,7 +412,7 @@ struct NotificationView: View, Equatable {
     }
     
     private var iconName: String {
-        if manager.mergedCount > 0 {
+        if mergedCount > 0 {
             return "bell.badge.fill"
         } else if notification.priority == .urgent {
             return "bell.badge.circle.fill"
@@ -454,19 +465,22 @@ struct NotificationActionButton: View {
 }
 
 struct NotificationHistoryView: View {
-    @ObservedObject var manager = NotificationManager.shared
     @State private var selectedNotification: NotchNotification?
-    
+    @State private var historyNotifications: [NotchNotification] = []
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("通知历史")
                     .font(.system(size: 16, weight: .semibold))
-                
+
                 Spacer()
-                
+
                 Button(action: {
-                    manager.clearHistory()
+                    Task {
+                        await NotificationManager.shared.clearHistory()
+                        historyNotifications = []
+                    }
                 }) {
                     Text("清除全部")
                         .font(.system(size: 12))
@@ -479,14 +493,14 @@ struct NotificationHistoryView: View {
             
             ScrollView {
                 LazyVStack(spacing: 8) {  // 改用 LazyVStack 提升性能
-                    if manager.notificationHistory.isEmpty {
+                    if historyNotifications.isEmpty {
                     Text("暂无通知记录")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 40)
                     } else {
-                        ForEach(manager.notificationHistory) { notification in
+                        ForEach(historyNotifications) { notification in
                             NotificationHistoryItem(
                                 notification: notification,
                                 isSelected: selectedNotification?.id == notification.id
@@ -513,12 +527,15 @@ struct NotificationHistoryView: View {
             }
         }
         .frame(maxHeight: 400)
+        .task {
+            historyNotifications = await NotificationManager.shared.getHistory(page: 0, pageSize: 50)
+        }
     }
 }
 
 struct NotificationCenterMainView: View {
-    @ObservedObject var manager = NotificationManager.shared
     @State private var selectedNotification: NotchNotification?
+    @State private var historyNotifications: [NotchNotification] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -531,8 +548,8 @@ struct NotificationCenterMainView: View {
 
                 Spacer()
 
-                if !manager.notificationHistory.isEmpty {
-                    Text("\(manager.notificationHistory.count) 条")
+                if !historyNotifications.isEmpty {
+                    Text("\(historyNotifications.count) 条")
                         .font(.caption2)
                         .foregroundColor(.white.opacity(0.5))
                         .padding(.horizontal, 6)
@@ -541,7 +558,10 @@ struct NotificationCenterMainView: View {
                         .cornerRadius(4)
 
                     Button(action: {
-                        manager.clearHistory()
+                        Task {
+                            await NotificationManager.shared.clearHistory()
+                            historyNotifications = []
+                        }
                     }) {
                         Image(systemName: "trash")
                             .font(.caption)
@@ -565,7 +585,7 @@ struct NotificationCenterMainView: View {
             Divider().opacity(0.3)
 
             // 内容区域
-            if manager.notificationHistory.isEmpty {
+            if historyNotifications.isEmpty {
                 // 空状态界面
                 VStack(spacing: 8) {
                     Spacer()
@@ -583,7 +603,7 @@ struct NotificationCenterMainView: View {
                 // 直接显示可滑动的历史记录
                 ScrollView {
                     VStack(spacing: 6) {
-                        ForEach(manager.notificationHistory) { notification in
+                        ForEach(historyNotifications) { notification in
                             NotificationHistoryItem(
                                 notification: notification,
                                 isSelected: selectedNotification?.id == notification.id
@@ -606,6 +626,9 @@ struct NotificationCenterMainView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.opacity(0.2))
+        .task {
+            historyNotifications = await NotificationManager.shared.getHistory(page: 0, pageSize: 50)
+        }
     }
 }
 

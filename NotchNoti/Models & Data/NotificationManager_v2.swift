@@ -1,184 +1,20 @@
 //
-//  NotificationModel.swift
+//  NotificationManager_v2.swift
 //  NotchNoti
 //
-//  Created for Claude Code Hook Notifications
+//  现代化的通知管理器 - Actor 重构版本
+//  替换旧的 NotificationModel.swift 中的 NotificationManager
+//
+//  使用说明:
+//  1. 在 Xcode 中创建 NotchNoti.xcdatamodeld (参考 CoreDataModel.md)
+//  2. 将此文件重命名为 NotificationManager.swift
+//  3. 删除旧的 NotificationModel.swift 中的 NotificationManager 类
 //
 
+import Combine
 import Foundation
-import SwiftUI
-
-struct NotchNotification: Identifiable, Codable, Equatable {
-    let id: UUID
-    let timestamp: Date
-    let title: String
-    let message: String
-    let type: NotificationType
-    let priority: Priority
-    let icon: String?
-    let actions: [NotificationAction]?
-    var metadata: [String: String]?  // var 允许修改用户选择等运行时数据
-
-    static func == (lhs: NotchNotification, rhs: NotchNotification) -> Bool {
-        lhs.id == rhs.id
-    }
-
-    enum NotificationType: String, Codable, CaseIterable {
-        case info = "info"
-        case success = "success"
-        case warning = "warning"
-        case error = "error"
-        case hook = "hook"
-        case toolUse = "tool_use"
-        case progress = "progress"
-        case celebration = "celebration"
-        case reminder = "reminder"
-        case download = "download"
-        case upload = "upload"
-        case security = "security"
-        case ai = "ai"
-        case sync = "sync"
-    }
-
-    enum Priority: Int, Codable {
-        case low = 0
-        case normal = 1
-        case high = 2
-        case urgent = 3
-    }
-
-    init(
-        title: String,
-        message: String,
-        type: NotificationType = .info,
-        priority: Priority = .normal,
-        icon: String? = nil,
-        actions: [NotificationAction]? = nil,
-        metadata: [String: String]? = nil
-    ) {
-        self.id = UUID()
-        self.timestamp = Date()
-        self.title = title
-        self.message = message
-        self.type = type
-        self.priority = priority
-        self.icon = icon
-        self.actions = actions
-        self.metadata = metadata
-    }
-
-    var color: Color {
-        switch type {
-        case .info:
-            return .blue
-        case .success:
-            return .green
-        case .warning:
-            return .orange
-        case .error:
-            return .red
-        case .hook:
-            return .purple
-        case .toolUse:
-            return .cyan
-        case .progress:
-            return .gray
-        case .celebration:
-            return Color(red: 1.0, green: 0.84, blue: 0)  // 金色
-        case .reminder:
-            return .indigo
-        case .download:
-            return Color(red: 0, green: 0.8, blue: 0.8)  // 青绿色
-        case .upload:
-            return Color(red: 0.58, green: 0.0, blue: 0.83)  // 紫罗兰色
-        case .security:
-            return Color(red: 0.5, green: 0, blue: 0)  // 深红色
-        case .ai:
-            return .purple  // AI 使用渐变,这里是基础色
-        case .sync:
-            return Color(red: 0, green: 0.7, blue: 0.7)  // 青绿色
-        }
-    }
-
-    var systemImage: String {
-        switch type {
-        case .info:
-            return "info.circle.fill"
-        case .success:
-            return "checkmark.circle.fill"
-        case .warning:
-            return "exclamationmark.triangle.fill"
-        case .error:
-            return "xmark.circle.fill"
-        case .hook:
-            return "link.circle.fill"
-        case .toolUse:
-            return "wrench.and.screwdriver.fill"
-        case .progress:
-            return "arrow.trianglehead.clockwise.rotate.90"
-        case .celebration:
-            return "trophy.fill"
-        case .reminder:
-            return "bell.badge"
-        case .download:
-            return "arrow.down.circle.fill"
-        case .upload:
-            return "arrow.up.circle.fill"
-        case .security:
-            return "lock.shield.fill"
-        case .ai:
-            return "brain.head.profile"
-        case .sync:
-            return "arrow.triangle.2.circlepath"
-        }
-    }
-}
-
-struct NotificationAction: Codable, Identifiable, Equatable {
-    let id: UUID
-    let label: String
-    let action: String
-    let style: ActionStyle
-
-    init(label: String, action: String, style: ActionStyle) {
-        self.id = UUID()
-        self.label = label
-        self.action = action
-        self.style = style
-    }
-
-    static func == (lhs: NotificationAction, rhs: NotificationAction) -> Bool {
-        lhs.id == rhs.id
-    }
-
-    enum ActionStyle: String, Codable {
-        case normal = "normal"
-        case primary = "primary"
-        case destructive = "destructive"
-    }
-}
-
-// MARK: - Notification Request (for JSON decoding from Unix Socket/HTTP)
-struct NotificationRequest: Codable {
-    let title: String
-    let message: String
-    let type: String?
-    let priority: Int?
-    let icon: String?
-    let actions: [NotificationActionRequest]?
-    let metadata: [String: String]?
-}
-
-struct NotificationActionRequest: Codable {
-    let label: String
-    let action: String
-    let style: String?
-}
 
 // MARK: - Notification Manager Actor
-
-import Combine
-import AppKit
 
 @globalActor
 actor NotificationManager {
@@ -325,94 +161,6 @@ actor NotificationManager {
         }
     }
 
-    /// 清除历史记录
-    func clearHistory() async {
-        do {
-            try await repository.clear()
-            cachedHistory.removeAll()
-            print("[NotificationManager] History cleared")
-        } catch {
-            print("[NotificationManager] Failed to clear history: \(error.localizedDescription)")
-        }
-    }
-
-    /// 获取历史记录数量
-    func getHistoryCount(searchText: String? = nil) async -> Int {
-        do {
-            if let query = searchText {
-                // For search, we need to fetch and count
-                let results = try await repository.search(query: query, page: 0, pageSize: Int.max)
-                return results.count
-            } else {
-                return try await repository.count()
-            }
-        } catch {
-            print("[NotificationManager] Failed to get history count: \(error.localizedDescription)")
-            return 0
-        }
-    }
-
-    /// 分页加载历史记录
-    func loadHistoryPage(page: Int, pageSize: Int, searchText: String? = nil) async -> [NotchNotification] {
-        if let query = searchText {
-            return await search(query: query, page: page)
-        } else {
-            return await getHistory(page: page, pageSize: pageSize)
-        }
-    }
-
-    /// 取消隐藏定时器
-    func cancelHideTimer() {
-        hideTimer?.invalidate()
-        hideTimer = nil
-    }
-
-    /// 重启隐藏定时器
-    func restartHideTimer() {
-        guard let current = currentNotification else { return }
-        let duration = calculateDuration(for: current)
-        scheduleHide(after: duration)
-    }
-
-    /// 记录用户选择
-    func recordUserChoice(for notificationId: UUID, choice: String) {
-        // 更新缓存中的通知
-        if let index = cachedHistory.firstIndex(where: { $0.id == notificationId }) {
-            var notification = cachedHistory[index]
-            if notification.metadata == nil {
-                notification.metadata = [:]
-            }
-            notification.metadata?[MetadataKeys.userChoice] = choice
-            cachedHistory[index] = notification
-        }
-
-        // 更新当前通知
-        if currentNotification?.id == notificationId {
-            var notification = currentNotification!
-            if notification.metadata == nil {
-                notification.metadata = [:]
-            }
-            notification.metadata?[MetadataKeys.userChoice] = choice
-            currentNotification = notification
-        }
-    }
-
-    /// 获取当前是否正在显示通知
-    var showNotification: Bool {
-        currentNotification != nil
-    }
-
-    /// 获取待处理通知列表
-    var pendingNotifications: [NotchNotification] {
-        pendingQueue
-    }
-
-    /// 获取合并计数
-    var mergedCount: Int {
-        // 简化实现：返回0（实际合并逻辑在shouldMerge中）
-        0
-    }
-
     // MARK: - Private Methods
 
     /// 加载初始缓存
@@ -442,8 +190,13 @@ actor NotificationManager {
             return false
         }
 
-        let timeSinceLast = Date().timeIntervalSince(lastTime)
-        return timeSinceLast < NotificationConstants.mergeTimeWindow && lastSource == currentSource
+        let timeSinceL
+
+ast = Date().timeIntervalSince(lastTime)
+
+        return timeSinceL
+
+ast < NotificationConstants.mergeTimeWindow && lastSource == currentSource
     }
 
     /// 立即显示通知
@@ -451,7 +204,8 @@ actor NotificationManager {
         currentNotification = notification
 
         await MainActor.run {
-            viewModel?.notchOpen(.click)
+            viewModel?.showNotification(notification)
+            viewModel?.notchOpen(.notification)
         }
 
         // 设置自动隐藏定时器
@@ -561,5 +315,13 @@ extension NotchNotification {
         if let sound = NSSound(named: soundName) {
             sound.play()
         }
+    }
+}
+
+// MARK: - ViewModel Integration
+
+extension NotchViewModel {
+    func showNotification(_ notification: NotchNotification) {
+        currentNotification = notification
     }
 }

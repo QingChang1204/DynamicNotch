@@ -47,6 +47,16 @@
 		6923C6D12E91C43800ACD8B8 /* NotificationConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6923C6D02E91C43800ACD8B8 /* NotificationConfig.swift */; };
 		6923C6D52E91C64A00ACD8B8 /* NotificationConfigWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6923C6D42E91C64A00ACD8B8 /* NotificationConfigWindow.swift */; };
 		6923C7042E92186C00ACD8B8 /* PendingActionWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6923C7032E92186C00ACD8B8 /* PendingActionWatcher.swift */; };
+		6923C7122E92390700ACD8B8 /* NotificationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6923C70C2E92390700ACD8B8 /* NotificationRepository.swift */; };
+		6923C7132E92390700ACD8B8 /* NotificationEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6923C7092E92390700ACD8B8 /* NotificationEntity.swift */; };
+		6923C7142E92390700ACD8B8 /* CoreDataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6923C7102E92390700ACD8B8 /* CoreDataStack.swift */; };
+		6923C7152E92390700ACD8B8 /* WorkSessionEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6923C70A2E92390700ACD8B8 /* WorkSessionEntity.swift */; };
+		6923C7162E92390700ACD8B8 /* StatisticsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6923C70D2E92390700ACD8B8 /* StatisticsRepository.swift */; };
+		6923C7172E92390700ACD8B8 /* CoreDataModel.md in Resources */ = {isa = PBXBuildFile; fileRef = 6923C70F2E92390700ACD8B8 /* CoreDataModel.md */; };
+		6923C71A2E92398700ACD8B8 /* NotchNoti.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 6923C7182E92398700ACD8B8 /* NotchNoti.xcdatamodeld */; };
+		6923C71C2E92409900ACD8B8 /* AppError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6923C71B2E92409900ACD8B8 /* AppError.swift */; };
+		6923C7202E9240D900ACD8B8 /* CommonHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6923C71D2E9240D900ACD8B8 /* CommonHelpers.swift */; };
+		6923C7212E9240D900ACD8B8 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6923C71E2E9240D900ACD8B8 /* Constants.swift */; };
 		6976430B2E4E3AB400BB17B5 /* ClaudeCodeSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6976430A2E4E3AB400BB17B5 /* ClaudeCodeSetup.swift */; };
 		69DFE6ED2E4B88110051A581 /* DiffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DFE6EC2E4B88110051A581 /* DiffView.swift */; };
 		69F712A32E9171D200F6E709 /* WorkInsights.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F712A22E9171D200F6E709 /* WorkInsights.swift */; };
@@ -113,6 +123,16 @@
 		6923C6D02E91C43800ACD8B8 /* NotificationConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationConfig.swift; sourceTree = "<group>"; };
 		6923C6D42E91C64A00ACD8B8 /* NotificationConfigWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationConfigWindow.swift; sourceTree = "<group>"; };
 		6923C7032E92186C00ACD8B8 /* PendingActionWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingActionWatcher.swift; sourceTree = "<group>"; };
+		6923C7092E92390700ACD8B8 /* NotificationEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationEntity.swift; sourceTree = "<group>"; };
+		6923C70A2E92390700ACD8B8 /* WorkSessionEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkSessionEntity.swift; sourceTree = "<group>"; };
+		6923C70C2E92390700ACD8B8 /* NotificationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationRepository.swift; sourceTree = "<group>"; };
+		6923C70D2E92390700ACD8B8 /* StatisticsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsRepository.swift; sourceTree = "<group>"; };
+		6923C70F2E92390700ACD8B8 /* CoreDataModel.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CoreDataModel.md; sourceTree = "<group>"; };
+		6923C7102E92390700ACD8B8 /* CoreDataStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataStack.swift; sourceTree = "<group>"; };
+		6923C7192E92398700ACD8B8 /* NotchNoti.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = NotchNoti.xcdatamodel; sourceTree = "<group>"; };
+		6923C71B2E92409900ACD8B8 /* AppError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppError.swift; sourceTree = "<group>"; };
+		6923C71D2E9240D900ACD8B8 /* CommonHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommonHelpers.swift; sourceTree = "<group>"; };
+		6923C71E2E9240D900ACD8B8 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		6976430A2E4E3AB400BB17B5 /* ClaudeCodeSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCodeSetup.swift; sourceTree = "<group>"; };
 		69DFE6EC2E4B88110051A581 /* DiffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffView.swift; sourceTree = "<group>"; };
 		69F712A22E9171D200F6E709 /* WorkInsights.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkInsights.swift; sourceTree = "<group>"; };
@@ -159,6 +179,8 @@
 		504381822C3A86EA000ED325 /* NotchNoti */ = {
 			isa = PBXGroup;
 			children = (
+				6923C71F2E9240D900ACD8B8 /* Utilities */,
+				6923C7112E92390700ACD8B8 /* Persistence */,
 				69B2FF902E91330A00C6068C /* Resources */,
 				69B2FF8C2E9132A800C6068C /* Utilities & Extensions */,
 				69B2FF8B2E91329500C6068C /* Event Handling */,
@@ -180,9 +202,49 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		6923C70B2E92390700ACD8B8 /* Entities */ = {
+			isa = PBXGroup;
+			children = (
+				6923C7092E92390700ACD8B8 /* NotificationEntity.swift */,
+				6923C70A2E92390700ACD8B8 /* WorkSessionEntity.swift */,
+			);
+			path = Entities;
+			sourceTree = "<group>";
+		};
+		6923C70E2E92390700ACD8B8 /* Repositories */ = {
+			isa = PBXGroup;
+			children = (
+				6923C70C2E92390700ACD8B8 /* NotificationRepository.swift */,
+				6923C70D2E92390700ACD8B8 /* StatisticsRepository.swift */,
+			);
+			path = Repositories;
+			sourceTree = "<group>";
+		};
+		6923C7112E92390700ACD8B8 /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				6923C70B2E92390700ACD8B8 /* Entities */,
+				6923C70E2E92390700ACD8B8 /* Repositories */,
+				6923C70F2E92390700ACD8B8 /* CoreDataModel.md */,
+				6923C7102E92390700ACD8B8 /* CoreDataStack.swift */,
+				6923C7182E92398700ACD8B8 /* NotchNoti.xcdatamodeld */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		6923C71F2E9240D900ACD8B8 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				6923C71D2E9240D900ACD8B8 /* CommonHelpers.swift */,
+				6923C71E2E9240D900ACD8B8 /* Constants.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
 		69B2FF812E91305800C6068C /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				6923C71B2E92409900ACD8B8 /* AppError.swift */,
 				504381922C3A8755000ED325 /* main.swift */,
 				5043819A2C3A8A06000ED325 /* AppDelegate.swift */,
 			);
@@ -414,6 +476,7 @@
 				508C4DF22C631EF700642ADC /* InfoPlist.xcstrings in Resources */,
 				504381882C3A86EC000ED325 /* Assets.xcassets in Resources */,
 				2700D8EE2C3CFD37005ACDDF /* Localizable.xcstrings in Resources */,
+				6923C7172E92390700ACD8B8 /* CoreDataModel.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -452,6 +515,8 @@
 				504381AA2C3A9514000ED325 /* EventMonitor.swift in Sources */,
 				501F0E8C2C59E6BD00F0113C /* Language.swift in Sources */,
 				5043819B2C3A8A06000ED325 /* AppDelegate.swift in Sources */,
+				6923C7202E9240D900ACD8B8 /* CommonHelpers.swift in Sources */,
+				6923C7212E9240D900ACD8B8 /* Constants.swift in Sources */,
 				664EC5382E4DDC6300E544F0 /* UnixSocketServerSimple.swift in Sources */,
 				69F9A6522E8FF2CF009FAEC5 /* NotificationStats.swift in Sources */,
 				6923C6D52E91C64A00ACD8B8 /* NotificationConfigWindow.swift in Sources */,
@@ -465,7 +530,14 @@
 				6614A5F62E4C543900F1FEC1 /* PerformanceConfig.swift in Sources */,
 				50NM00062C6F000000000006 /* NotificationView.swift in Sources */,
 				69F9A6442E8EDBDA009FAEC5 /* Statistics.swift in Sources */,
+				6923C71A2E92398700ACD8B8 /* NotchNoti.xcdatamodeld in Sources */,
+				6923C71C2E92409900ACD8B8 /* AppError.swift in Sources */,
 				664EC5342E4DA30D00E544F0 /* NotificationEffects.swift in Sources */,
+				6923C7122E92390700ACD8B8 /* NotificationRepository.swift in Sources */,
+				6923C7132E92390700ACD8B8 /* NotificationEntity.swift in Sources */,
+				6923C7142E92390700ACD8B8 /* CoreDataStack.swift in Sources */,
+				6923C7152E92390700ACD8B8 /* WorkSessionEntity.swift in Sources */,
+				6923C7162E92390700ACD8B8 /* StatisticsRepository.swift in Sources */,
 				69076BF32E90DF5500512D9D /* PendingActionStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -729,6 +801,19 @@
 			productName = MCP;
 		};
 /* End XCSwiftPackageProductDependency section */
+
+/* Begin XCVersionGroup section */
+		6923C7182E92398700ACD8B8 /* NotchNoti.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				6923C7192E92398700ACD8B8 /* NotchNoti.xcdatamodel */,
+			);
+			currentVersion = 6923C7192E92398700ACD8B8 /* NotchNoti.xcdatamodel */;
+			path = NotchNoti.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
 	};
 	rootObject = 504381782C3A86EA000ED325 /* Project object */;
 }

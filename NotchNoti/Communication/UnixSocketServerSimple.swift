@@ -188,7 +188,7 @@ class UnixSocketServerSimple: ObservableObject {
             )
             
             // 在主线程添加通知和处理统计
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 // 处理统计信息
                 if let metadata = notification.metadata {
                     self.processStatistics(metadata: metadata)
@@ -200,7 +200,7 @@ class UnixSocketServerSimple: ObservableObject {
                     }
                 }
 
-                NotificationManager.shared.addNotification(notchNotification)
+                await NotificationManager.shared.addNotification(notchNotification)
                 if NotchViewModel.shared?.status != .opened {
                     NotchViewModel.shared?.notchOpen(.drag)
                 }

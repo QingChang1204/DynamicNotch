@@ -453,7 +453,9 @@ struct SummaryView: View {
                 priority: .normal,
                 metadata: ["path": suggestedPath.path]
             )
-            NotificationManager.shared.addNotification(notification)
+            Task {
+                await NotificationManager.shared.addNotification(notification)
+            }
 
         } catch {
             saveStatus = .error("保存失败: \(error.localizedDescription)")
@@ -477,7 +479,9 @@ struct SummaryView: View {
                 priority: .normal,
                 metadata: ["path": url.path]
             )
-            NotificationManager.shared.addNotification(notification)
+            Task {
+                await NotificationManager.shared.addNotification(notification)
+            }
 
         } catch {
             saveStatus = .error("保存失败: \(error.localizedDescription)")

@@ -10,7 +10,7 @@ import SwiftUI
 
 struct NotchSettingsView: View {
     @StateObject var vm: NotchViewModel
-    @ObservedObject var notificationManager = NotificationManager.shared
+    @State private var historyCount = 0
 
     var body: some View {
         VStack(spacing: vm.spacing) {
@@ -49,7 +49,7 @@ struct NotchSettingsView: View {
                 Text("通知历史记录:")
                     .foregroundColor(.secondary)
 
-                Text("\(notificationManager.notificationHistory.count) / 50")
+                Text("\(historyCount) / 50")
                     .font(.system(size: 14, weight: .semibold))
 
                 Spacer()
@@ -78,6 +78,10 @@ struct NotchSettingsView: View {
         }
         .padding()
         .transition(AnyTransition.scale(scale: 0.8).combined(with: .opacity))
+        .task {
+            let history = await NotificationManager.shared.getHistory(page: 0, pageSize: 50)
+            historyCount = history.count
+        }
     }
 }
 

@@ -10,13 +10,13 @@ import SwiftUI
 // MARK: - 通知历史 - 紧凑纵向列表
 
 struct CompactNotificationHistoryView: View {
-    @ObservedObject var manager = NotificationManager.shared
     @State private var searchText = ""
     @State private var loadedNotifications: [NotchNotification] = []
     @State private var currentPage = 0
     @State private var isLoading = false
     @State private var hasMore = true
     @State private var totalCount = 0
+    @State private var historyCount = 0
 
     private let pageSize = 20  // 每页20条
 
@@ -30,14 +30,18 @@ struct CompactNotificationHistoryView: View {
             VStack(spacing: 0) {
                 // 顶部栏：历史视图显示搜索框和清空按钮（有通知时）或关闭按钮（无通知时）
                 if isHistoryView {
-                    if !manager.notificationHistory.isEmpty {
+                    if historyCount > 0 {
                         HStack(spacing: 8) {
                             // 搜索栏
                             searchBar
 
                             // 清除按钮
                             Button(action: {
-                                manager.clearHistory()
+                                Task {
+                                    await NotificationManager.shared.clearHistory()
+                                    historyCount = 0
+                                    loadedNotifications = []
+                                }
                             }) {
                                 Image(systemName: "trash")
                                     .font(.system(size: 13))
@@ -148,12 +152,21 @@ struct CompactNotificationHistoryView: View {
             currentPage = 0
             loadedNotifications = []
             hasMore = true
-            totalCount = manager.getHistoryCount(searchText: searchText.isEmpty ? nil : searchText)
+            Task {
+                totalCount = await NotificationManager.shared.getHistoryCount(searchText: searchText.isEmpty ? nil : searchText)
+                historyCount = totalCount
+            }
             loadNextPage()
         } else {
             // 非历史视图：直接用内存中的全部通知（最多50条）
-            loadedNotifications = manager.notificationHistory
-            hasMore = false
+            Task {
+                let history = await NotificationManager.shared.getHistory(page: 0, pageSize: 50)
+                await MainActor.run {
+                    loadedNotifications = history
+                    historyCount = history.count
+                    hasMore = false
+                }
+            }
         }
     }
 
@@ -164,7 +177,9 @@ struct CompactNotificationHistoryView: View {
             loadedNotifications = []
             currentPage = 0
             hasMore = true
-            totalCount = manager.getHistoryCount(searchText: searchText.isEmpty ? nil : searchText)
+            Task {
+                totalCount = await NotificationManager.shared.getHistoryCount(searchText: searchText.isEmpty ? nil : searchText)
+            }
             loadNextPage()
         }
     }
@@ -176,7 +191,7 @@ struct CompactNotificationHistoryView: View {
         isLoading = true
 
         Task {
-            let newNotifications = await manager.loadHistoryPage(
+            let newNotifications = await NotificationManager.shared.loadHistoryPage(
                 page: currentPage,
                 pageSize: pageSize,
                 searchText: searchText.isEmpty ? nil : searchText
@@ -447,6 +462,7 @@ struct CompactAIAnalysisView: View {
     @ObservedObject var statsManager = StatisticsManager.shared
 
     @State private var isAnalyzing = false
+    @State private var historyCount = 0
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -464,6 +480,11 @@ struct CompactAIAnalysisView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.opacity(0.1))
+        .task {
+            // Load history count
+            let history = await NotificationManager.shared.getHistory(page: 0, pageSize: 50)
+            historyCount = history.count
+        }
         .onAppear {
             // 视图出现时自动分析（如果还没有洞察）
             if insightsAnalyzer.recentInsights.isEmpty && hasEnoughData {
@@ -666,15 +687,10 @@ struct CompactAIAnalysisView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // 检查是否有足够数据进行分析
+    // 检查是否有足够数据进行分析 - 简化版本，基于历史计数
     private var hasEnoughData: Bool {
-        let notifications = NotificationManager.shared.notificationHistory
-        guard !notifications.isEmpty else { return false }
-
-        let thirtyMinutesAgo = Date().addingTimeInterval(-1800)
-        let recentNotifs = notifications.filter { $0.timestamp >= thirtyMinutesAgo }
-
-        return recentNotifs.count >= 3
+        // 简单检查：如果有通知历史，就允许分析
+        historyCount >= 3
     }
 
     // 辅助方法

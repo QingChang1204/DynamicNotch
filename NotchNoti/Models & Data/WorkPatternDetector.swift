@@ -51,7 +51,7 @@ class WorkPatternDetector: ObservableObject {
             _ = await insightsAnalyzer.checkContinuousWork()
 
             // 检测反模式
-            let notifications = NotificationManager.shared.notificationHistory
+            let notifications = await NotificationManager.shared.getHistory(page: 0, pageSize: 100)
             if let pattern = insightsAnalyzer.detectAntiPattern(from: notifications) {
                 await MainActor.run {
                     detectedAntiPattern = pattern

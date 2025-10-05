@@ -1050,9 +1050,9 @@ extension StatisticsManager {
     func loadGlobalStatistics(
         range: TimeRange,
         project: String? = nil
-    ) -> GlobalStatistics {
+    ) async -> GlobalStatistics {
         // 从 NotificationManager 获取持久化历史
-        let allNotifications = NotificationManager.shared.getPersistentHistory()
+        let allNotifications = await NotificationManager.shared.getHistory(page: 0, pageSize: 5000)
 
         // 定义需要统计的工作相关通知类型
         let statisticsTypes: Set<NotchNotification.NotificationType> = [
@@ -1244,8 +1244,8 @@ extension StatisticsManager {
     }
 
     /// 获取所有可用的项目列表
-    func getAvailableProjects() -> [String] {
-        let allNotifications = NotificationManager.shared.getPersistentHistory()
+    func getAvailableProjects() async -> [String] {
+        let allNotifications = await NotificationManager.shared.getHistory(page: 0, pageSize: 5000)
         let projects = Set(allNotifications.compactMap { $0.metadata?["project"] })
         return Array(projects).sorted()
     }
@@ -1624,15 +1624,19 @@ struct GlobalStatsView: View {
             closeButton
         }
         .frame(height: 160)
-        .onAppear {
-            availableProjects = statsManager.getAvailableProjects()
-            loadData()
+        .task {
+            availableProjects = await statsManager.getAvailableProjects()
+            await loadData()
         }
         .onChange(of: timeRange) { _ in
-            loadData()
+            Task {
+                await loadData()
+            }
         }
         .onChange(of: selectedProject) { _ in
-            loadData()
+            Task {
+                await loadData()
+            }
         }
     }
 
@@ -1810,8 +1814,8 @@ struct GlobalStatsView: View {
 
     // MARK: - 辅助方法
 
-    private func loadData() {
-        stats = statsManager.loadGlobalStatistics(range: timeRange, project: selectedProject)
+    private func loadData() async {
+        stats = await statsManager.loadGlobalStatistics(range: timeRange, project: selectedProject)
     }
 
     private func typeIcon(_ type: NotchNotification.NotificationType) -> String {
