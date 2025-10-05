@@ -172,24 +172,32 @@ class UnixSocketServerSimple: ObservableObject {
 
             print("[UnixSocket] Received notification: \(notification.title)")
             print("[UnixSocket] Metadata keys: \(notification.metadata?.keys.joined(separator: ", ") ?? "none")")
+            print("[UnixSocket] Actions field: \(notification.actions?.count ?? -1) items (nil if -1)")
             if let summaryData = notification.metadata?["summary_data"] {
                 print("[UnixSocket] summary_data length: \(summaryData.count) chars")
             }
 
-            // 创建通知
+            // 创建通知 (确保空actions数组被转换为nil)
+            let parsedActions: [NotificationAction]? = {
+                guard let requestActions = notification.actions, !requestActions.isEmpty else {
+                    return nil
+                }
+                return requestActions.map { action in
+                    NotificationAction(
+                        label: action.label,
+                        action: action.action,
+                        style: NotificationAction.ActionStyle(rawValue: action.style ?? "normal") ?? .normal
+                    )
+                }
+            }()
+
             let notchNotification = NotchNotification(
                 title: notification.title,
                 message: notification.message,
                 type: NotchNotification.NotificationType(rawValue: notification.type ?? "info") ?? .info,
                 priority: NotchNotification.Priority(rawValue: notification.priority ?? 1) ?? .normal,
                 icon: notification.icon,
-                actions: notification.actions?.map { action in
-                    NotificationAction(
-                        label: action.label,
-                        action: action.action,
-                        style: NotificationAction.ActionStyle(rawValue: action.style ?? "normal") ?? .normal
-                    )
-                },
+                actions: parsedActions,
                 metadata: notification.metadata
             )
             
