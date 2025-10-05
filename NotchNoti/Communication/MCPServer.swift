@@ -87,13 +87,33 @@ class NotchMCPServer {
         // 使用 stdio 传输
         let transport = StdioTransport()
 
-        // 启动服务器（异步，不阻塞）
+        // 启动服务器
         try await server.start(transport: transport)
 
         isRunning = true
 
-        // 不调用 waitUntilCompleted()，让 main.swift 中的 RunLoop.main.run() 保持进程运行
-        // waitUntilCompleted() 会阻塞，导致 Task 无法完成，RunLoop 无法处理 stdio 输入
+        // 输出健康检查信息到 stderr (不能用 stdout,会污染 JSON-RPC)
+        fputs("[MCP] ✓ Server started successfully\n", stderr)
+        fputs("[MCP] Tools: \(tools.count), Resources: \(resources.count), Prompts: \(prompts.count)\n", stderr)
+
+        // 获取 GUI Socket 路径用于诊断
+        let containerPath = NSHomeDirectory()
+        let socketPath = "\(containerPath)/.notch.sock"
+        fputs("[MCP] GUI Socket path: \(socketPath)\n", stderr)
+
+        // 检查 Socket 文件是否存在
+        if FileManager.default.fileExists(atPath: socketPath) {
+            fputs("[MCP] ✓ GUI Socket file exists\n", stderr)
+        } else {
+            fputs("[MCP] ⚠️  GUI Socket file not found (GUI may not be running yet)\n", stderr)
+        }
+
+        fputs("[MCP] Waiting for requests from Claude Code...\n", stderr)
+
+        // ❌ 不调用 waitUntilCompleted()!
+        // 原因: 它会阻塞整个 async task,导致 tool handler 里的文件监控无法执行
+        // 正确做法: 让 RunLoop.main.run() 保持进程运行,MCP Server 在后台处理请求
+        // await server.waitUntilCompleted()
     }
 
     /// 停止服务器
@@ -620,44 +640,74 @@ class NotchMCPServer {
     }
 
     /// 发送消息到 Unix Socket（nonisolated 避免并发安全问题）
+    /// 包含重试机制，确保 GUI Socket Server 就绪后能成功连接
     private nonisolated func sendToUnixSocket(path: String, message: String) {
-        // 创建 socket
-        let sock = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
-        guard sock >= 0 else { return }
-        defer { Darwin.close(sock) }
+        let maxRetries = 5
+        var lastError: Int32 = 0
 
-        // 设置 SO_NOSIGPIPE 避免 SIGPIPE 崩溃
-        var on: Int32 = 1
-        setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &on, socklen_t(MemoryLayout<Int32>.size))
+        for attempt in 1...maxRetries {
+            // 创建 socket
+            let sock = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
+            guard sock >= 0 else {
+                lastError = errno
+                if attempt < maxRetries {
+                    usleep(200_000)  // 等待 200ms
+                }
+                continue
+            }
+            defer { Darwin.close(sock) }
 
-        // 构建地址结构
-        var addr = sockaddr_un()
-        addr.sun_family = sa_family_t(AF_UNIX)
+            // 设置 SO_NOSIGPIPE 避免 SIGPIPE 崩溃
+            var on: Int32 = 1
+            setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &on, socklen_t(MemoryLayout<Int32>.size))
 
-        // 复制路径到 sun_path
-        let pathCopy = path
-        pathCopy.withCString { cString in
-            withUnsafeMutableBytes(of: &addr.sun_path) { buffer in
-                let len = min(strlen(cString), buffer.count - 1)
-                memcpy(buffer.baseAddress, cString, len)
+            // 构建地址结构
+            var addr = sockaddr_un()
+            addr.sun_family = sa_family_t(AF_UNIX)
+
+            // 复制路径到 sun_path
+            let pathCopy = path
+            pathCopy.withCString { cString in
+                withUnsafeMutableBytes(of: &addr.sun_path) { buffer in
+                    let len = min(strlen(cString), buffer.count - 1)
+                    memcpy(buffer.baseAddress, cString, len)
+                }
+            }
+
+            // 连接
+            let result = withUnsafePointer(to: &addr) { ptr in
+                ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
+                    Darwin.connect(sock, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
+                }
+            }
+
+            if result == 0 {
+                // 连接成功，发送数据
+                _ = message.withCString { cString in
+                    Darwin.send(sock, cString, strlen(cString), 0)
+                }
+
+                // 首次成功时输出日志
+                if attempt > 1 {
+                    fputs("[MCP] Socket connected successfully after \(attempt) attempts\n", stderr)
+                }
+                return  // ✅ 成功
+            }
+
+            // 连接失败，记录错误
+            lastError = errno
+
+            if attempt < maxRetries {
+                fputs("[MCP] Socket connection failed (attempt \(attempt)/\(maxRetries)): \(String(cString: strerror(lastError)))\n", stderr)
+                usleep(200_000)  // 等待 200ms 后重试
             }
         }
 
-        // 连接
-        let result = withUnsafePointer(to: &addr) { ptr in
-            ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
-                Darwin.connect(sock, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
-            }
-        }
-
-        guard result == 0 else {
-            return
-        }
-
-        // 发送数据 (使用 MSG_NOSIGNAL 标志，但 macOS 不支持，用 SO_NOSIGPIPE 代替)
-        _ = message.withCString { cString in
-            Darwin.send(sock, cString, strlen(cString), 0)
-        }
+        // 所有重试都失败
+        fputs("[MCP] ⚠️  Failed to connect to GUI Socket after \(maxRetries) attempts\n", stderr)
+        fputs("[MCP] Last error: \(String(cString: strerror(lastError)))\n", stderr)
+        fputs("[MCP] Socket path: \(path)\n", stderr)
+        fputs("[MCP] Is GUI process running?\n", stderr)
     }
 }
 
