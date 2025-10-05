@@ -239,7 +239,8 @@ struct NotificationView: View, Equatable {
             // 添加关闭按钮
             Button(action: {
                 Task {
-                    await NotificationManager.shared.hideCurrentNotification()
+                    // 手动关闭：不自动显示下一个通知
+                    await NotificationManager.shared.hideCurrentNotification(showNext: false)
                 }
             }) {
                 Image(systemName: "xmark.circle.fill")
@@ -370,10 +371,10 @@ struct NotificationView: View, Equatable {
             // 通过 Unix Socket 发送用户选择结果到 MCP 服务器
             sendMCPActionResult(requestId: requestId, choice: choice)
 
-            // 隐藏当前通知
+            // 隐藏当前通知（用户主动选择，不显示下一个）
             withAnimation(AnimationConstants.notificationHide) {
                 Task {
-                    await NotificationManager.shared.hideCurrentNotification()
+                    await NotificationManager.shared.hideCurrentNotification(showNext: false)
                 }
             }
         } else {

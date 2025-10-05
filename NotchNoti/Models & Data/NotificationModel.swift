@@ -197,7 +197,13 @@ actor NotificationManager {
     // MARK: - Properties
 
     private let repository: NotificationRepository
-    private let viewModel: NotchViewModel?
+
+    /// 动态获取 ViewModel（避免初始化顺序问题）
+    /// nonisolated: 允许从任何上下文访问（包括 MainActor）
+    private nonisolated var viewModel: NotchViewModel? {
+        NotchViewModel.shared
+    }
+
     private let config: NotificationConfigManager
 
     // 当前显示的通知
@@ -209,8 +215,8 @@ actor NotificationManager {
     // 内存缓存 (用于 UI 快速访问)
     private var cachedHistory: [NotchNotification] = []
 
-    // 定时器 (弱引用防止循环)
-    private var hideTimer: Timer?
+    // 自动隐藏任务
+    private var hideTask: Task<Void, Never>?
 
     // 合并窗口跟踪
     private var lastNotificationTime: Date?
@@ -224,7 +230,6 @@ actor NotificationManager {
 
     private init(repository: NotificationRepository = NotificationRepository()) {
         self.repository = repository
-        self.viewModel = NotchViewModel.shared
         self.config = NotificationConfigManager.shared
 
         // 启动时加载缓存
@@ -254,11 +259,15 @@ actor NotificationManager {
         updateCache(with: notification)
 
         // 4. 决定显示策略
-        if notification.priority == .urgent {
-            // 紧急通知立即打断
-            await displayImmediately(notification)
-        } else if currentNotification == nil {
+        if currentNotification == nil {
             // 当前无通知,直接显示
+            await displayImmediately(notification)
+        } else if shouldInterrupt(current: currentNotification!, new: notification) {
+            // 新通知优先级更高,打断当前通知
+            // 将当前通知放回队列头部
+            if let current = currentNotification {
+                pendingQueue.insert(current, at: 0)
+            }
             await displayImmediately(notification)
         } else {
             // 加入队列
@@ -343,18 +352,29 @@ actor NotificationManager {
     }
 
     /// 关闭当前通知
-    func hideCurrentNotification() async {
-        hideTimer?.invalidate()
-        hideTimer = nil
+    /// - Parameter showNext: 是否自动显示下一个通知（true=自动超时关闭，false=手动点X关闭）
+    func hideCurrentNotification(showNext: Bool = true) async {
+        print("[NotificationManager] hideCurrentNotification called - showNext:\(showNext), queueSize:\(pendingQueue.count)")
+
+        // 取消自动隐藏任务
+        hideTask?.cancel()
+        hideTask = nil
 
         currentNotification = nil
 
-        await MainActor.run {
-            viewModel?.returnToNormal()
+        // 决定如何关闭
+        if showNext && !pendingQueue.isEmpty {
+            // 有待处理的通知，显示下一个
+            print("[NotificationManager] → Showing next notification from queue")
+            await showNextInQueue()
+        } else {
+            // 没有更多通知，完全关闭刘海
+            print("[NotificationManager] → Closing notch completely (no more notifications)")
+            await MainActor.run {
+                viewModel?.notchClose()
+                print("[NotificationManager] → notchClose() called, status should be: \(String(describing: viewModel?.status))")
+            }
         }
-
-        // 显示下一个
-        await showNextInQueue()
     }
 
     /// 清理旧数据
@@ -403,10 +423,10 @@ actor NotificationManager {
         }
     }
 
-    /// 取消隐藏定时器
+    /// 取消隐藏任务
     func cancelHideTimer() {
-        hideTimer?.invalidate()
-        hideTimer = nil
+        hideTask?.cancel()
+        hideTask = nil
     }
 
     /// 重启隐藏定时器
@@ -511,6 +531,22 @@ actor NotificationManager {
         return false
     }
 
+    /// 判断新通知是否应该打断当前通知
+    private func shouldInterrupt(current: NotchNotification, new: NotchNotification) -> Bool {
+        // 紧急通知（priority=3）总是打断
+        if new.priority == .urgent {
+            return true
+        }
+
+        // 高优先级（priority=2）可以打断普通和低优先级
+        if new.priority == .high && (current.priority == .normal || current.priority == .low) {
+            return true
+        }
+
+        // 其他情况不打断
+        return false
+    }
+
     /// 立即显示通知
     private func displayImmediately(_ notification: NotchNotification) async {
         currentNotification = notification
@@ -549,31 +585,24 @@ actor NotificationManager {
 
     /// 计算显示时长
     private func calculateDuration(for notification: NotchNotification) -> TimeInterval {
-        // 基础时长
-        var duration: TimeInterval
-        switch notification.priority {
-        case .urgent:
-            duration = NotificationConstants.DurationByPriority.urgent
-        case .high:
-            duration = NotificationConstants.DurationByPriority.high
-        case .normal:
-            duration = NotificationConstants.DurationByPriority.normal
-        case .low:
-            duration = NotificationConstants.DurationByPriority.low
-        }
-
-        // 消息长度影响
-        let messageLength = notification.message.count
-        let extraTime = Double(messageLength / NotificationConstants.MessageLengthImpact.charactersPerExtraSecond) * 0.5
-        duration += min(extraTime, NotificationConstants.MessageLengthImpact.maxExtraTime)
-
-        // 特殊类型
-        if notification.metadata?[MetadataKeys.diffPath] != nil {
-            duration = NotificationConstants.diffDuration
-        }
-
+        // 1. 检查是否有 actions（交互式通知）
         if notification.actions != nil {
-            duration = NotificationConstants.actionableDuration
+            return NotificationConstants.actionableDuration  // 30秒，用于交互
+        }
+
+        // 2. 检查是否是 diff 通知
+        if notification.metadata?[MetadataKeys.diffPath] != nil {
+            return NotificationConstants.diffDuration  // 2秒，diff预览
+        }
+
+        // 3. 使用用户配置的默认时长（或类型特定时长）
+        var duration = config.getDuration(for: notification)
+
+        // 4. 根据消息长度动态调整（可选：如果消息很长，稍微延长显示时间）
+        let messageLength = notification.message.count
+        if messageLength > NotificationConstants.MessageLengthImpact.charactersPerExtraSecond {
+            let extraTime = Double(messageLength / NotificationConstants.MessageLengthImpact.charactersPerExtraSecond) * 0.5
+            duration += min(extraTime, NotificationConstants.MessageLengthImpact.maxExtraTime)
         }
 
         return duration
@@ -581,12 +610,18 @@ actor NotificationManager {
 
     /// 设置自动隐藏定时器
     private func scheduleHide(after duration: TimeInterval) {
-        hideTimer?.invalidate()
+        // 取消之前的任务
+        hideTask?.cancel()
 
-        hideTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
-            Task { [weak self] in
-                await self?.hideCurrentNotification()
-            }
+        // 创建新的延迟任务
+        hideTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+
+            // 检查任务是否被取消
+            guard !Task.isCancelled else { return }
+
+            // 自动超时关闭，允许显示下一个通知
+            await self?.hideCurrentNotification(showNext: true)
         }
     }
 

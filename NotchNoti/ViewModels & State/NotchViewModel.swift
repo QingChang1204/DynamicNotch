@@ -91,9 +91,12 @@ class NotchViewModel: NSObject, ObservableObject {
     }
 
     func notchClose() {
+        print("[NotchViewModel] notchClose() - setting status to .closed")
         openReason = .unknown
         status = .closed
-        contentType = .normal
+        print("[NotchViewModel] notchClose() - status is now: \(status)")
+        // 不要在关闭时重置 contentType，避免显示历史视图
+        // contentType 会在下次 notchOpen 时被设置
     }
 
     func showSettings() {
