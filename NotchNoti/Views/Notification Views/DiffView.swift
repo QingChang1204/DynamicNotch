@@ -87,12 +87,7 @@ struct DiffView: View {
             Spacer()
 
             // 关闭按钮
-            Button(action: { isPresented = false }) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 18))
-                    .foregroundColor(.white.opacity(0.5))
-            }
-            .buttonStyle(.plain)
+            WindowCloseButton(isPresented: $isPresented)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)

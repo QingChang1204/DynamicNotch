@@ -144,6 +144,12 @@ class UnixSocketServerSimple: ObservableObject {
     private func handleClient(_ clientSocket: Int32) {
         defer { close(clientSocket) }
 
+        // 权限验证: 检查客户端UID
+        if !validateClientPermissions(clientSocket) {
+            print("[UnixSocket] SECURITY: Rejected connection from unauthorized client")
+            return
+        }
+
         // 设置客户端 socket 的 SO_NOSIGPIPE
         var on: Int32 = 1
         setsockopt(clientSocket, SOL_SOCKET, SO_NOSIGPIPE, &on, socklen_t(MemoryLayout<Int32>.size))
@@ -282,5 +288,40 @@ class UnixSocketServerSimple: ObservableObject {
         } catch {
             print("[UnixSocket] Failed to decode summary data: \(error)")
         }
+    }
+
+    // MARK: - Security: Permission Validation
+
+    /// 验证客户端权限 (UID检查)
+    /// 只允许同一用户的进程连接
+    private func validateClientPermissions(_ clientSocket: Int32) -> Bool {
+        var cred = xucred()
+        var credLen = socklen_t(MemoryLayout<xucred>.size)
+
+        // 获取客户端进程的凭证 (UID/GID)
+        let result = getsockopt(
+            clientSocket,
+            0, // SOL_LOCAL
+            0x0002, // LOCAL_PEERCRED
+            &cred,
+            &credLen
+        )
+
+        guard result == 0 else {
+            print("[UnixSocket] SECURITY: Failed to get peer credentials: \(String(cString: strerror(errno)))")
+            return false
+        }
+
+        let clientUID = cred.cr_uid
+        let serverUID = getuid()
+
+        // 只允许同一用户的进程
+        if clientUID != serverUID {
+            print("[UnixSocket] SECURITY: UID mismatch - client:\(clientUID) server:\(serverUID)")
+            return false
+        }
+
+        // print("[UnixSocket] SECURITY: ✓ Validated client UID: \(clientUID)")
+        return true
     }
 }
