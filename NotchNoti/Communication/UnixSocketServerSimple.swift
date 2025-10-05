@@ -291,7 +291,7 @@ class UnixSocketServerSimple: ObservableObject {
     // MARK: - Security: Permission Validation
 
     /// 验证客户端权限 (UID检查)
-    /// 只允许同一用户的进程连接
+    /// 允许同一用户或root用户的进程连接
     private func validateClientPermissions(_ clientSocket: Int32) -> Bool {
         var cred = xucred()
         var credLen = socklen_t(MemoryLayout<xucred>.size)
@@ -313,8 +313,9 @@ class UnixSocketServerSimple: ObservableObject {
         let clientUID = cred.cr_uid
         let serverUID = getuid()
 
-        // 只允许同一用户的进程
-        if clientUID != serverUID {
+        // 允许同一用户或root用户（UID=0）连接
+        // root允许连接是因为Claude Code的Hook可能以sudo运行
+        if clientUID != serverUID && clientUID != 0 {
             print("[UnixSocket] SECURITY: UID mismatch - client:\(clientUID) server:\(serverUID)")
             return false
         }
