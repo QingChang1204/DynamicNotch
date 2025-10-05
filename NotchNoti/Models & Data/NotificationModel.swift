@@ -283,6 +283,28 @@ actor NotificationManager {
         }
     }
 
+    /// 组合查询: 时间 + 类型 + 项目 (优化查询,数据库层过滤)
+    func getHistory(
+        from startDate: Date,
+        to endDate: Date,
+        types: [NotchNotification.NotificationType],
+        project: String? = nil,
+        limit: Int = 2000
+    ) async -> [NotchNotification] {
+        do {
+            return try await repository.fetch(
+                from: startDate,
+                to: endDate,
+                types: types,
+                project: project,
+                pageSize: limit
+            )
+        } catch {
+            print("[NotificationManager] Filtered query failed: \(error.localizedDescription)")
+            return []
+        }
+    }
+
     /// 获取统计数据
     func getStatistics() async -> (total: Int, byType: [NotchNotification.NotificationType: Int]) {
         do {

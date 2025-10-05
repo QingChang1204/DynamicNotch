@@ -1051,24 +1051,23 @@ extension StatisticsManager {
         range: TimeRange,
         project: String? = nil
     ) async -> GlobalStatistics {
-        // 从 NotificationManager 获取持久化历史
-        let allNotifications = await NotificationManager.shared.getHistory(page: 0, pageSize: 5000)
-
         // 定义需要统计的工作相关通知类型
-        let statisticsTypes: Set<NotchNotification.NotificationType> = [
+        let statisticsTypes: [NotchNotification.NotificationType] = [
             .toolUse, .warning, .info, .success, .error, .hook
         ]
 
-        // 筛选时间范围、项目和通知类型
+        // 使用优化的组合查询: 数据库层过滤时间+类型,代码层过滤项目
         let startDate = range.startDate
-        let now = Date()
+        let endDate = Date()
 
-        let filtered = allNotifications.filter { notif in
-            let inRange = range.contains(notif.timestamp)
-            let inProject = project == nil || notif.metadata?["project"] == project
-            let isStatisticsType = statisticsTypes.contains(notif.type)
-            return inRange && inProject && isStatisticsType
-        }
+        // 直接从数据库层过滤,避免加载5000条数据到内存
+        let filtered = await NotificationManager.shared.getHistory(
+            from: startDate,
+            to: endDate,
+            types: statisticsTypes,
+            project: project,
+            limit: 2000  // 限制最多2000条,降低内存占用
+        )
 
         // print("[Stats] 📊 筛选结果: \(filtered.count)条 (时间范围:\(range.rawValue), 项目:\(project ?? "全部"))")
 

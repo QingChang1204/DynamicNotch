@@ -118,6 +118,41 @@ actor NotificationRepository: NotificationRepositoryProtocol {
         return all.filter { $0.metadata?[MetadataKeys.project] == project }
     }
 
+    /// 组合查询: 时间范围 + 类型 + 项目 (数据库层 + 代码层混合过滤)
+    func fetch(
+        from startDate: Date,
+        to endDate: Date,
+        types: [NotchNotification.NotificationType],
+        project: String? = nil,
+        pageSize: Int = NotificationConstants.defaultPageSize
+    ) async throws -> [NotchNotification] {
+        let context = await stack.viewContext
+
+        return try await context.perform {
+            // 1. 数据库层过滤: 时间 + 类型 (利用索引)
+            let request = NotificationEntity.fetchRequest()
+            let typeValues = types.map { $0.rawValue }
+            request.predicate = NSPredicate(
+                format: "timestamp >= %@ AND timestamp <= %@ AND typeRawValue IN %@",
+                startDate as NSDate,
+                endDate as NSDate,
+                typeValues
+            )
+            request.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: false)]
+            request.fetchLimit = pageSize
+
+            let entities = try context.fetch(request)
+            var results = entities.map { $0.toModel() }
+
+            // 2. 代码层过滤: 项目 (metadata JSON字段)
+            if let project = project {
+                results = results.filter { $0.metadata?[MetadataKeys.project] == project }
+            }
+
+            return results
+        }
+    }
+
     func search(
         query: String,
         page: Int = 0,
