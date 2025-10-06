@@ -36,6 +36,7 @@
 		50NM00062C6F000000000006 /* NotificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50NM00032C6F000000000003 /* NotificationView.swift */; };
 		60AD62872C579F4400299297 /* NotchSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60AD62862C579F4400299297 /* NotchSettingsView.swift */; };
 		6614A5F62E4C543900F1FEC1 /* PerformanceConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6614A5F52E4C543900F1FEC1 /* PerformanceConfig.swift */; };
+		6614A5F82E4C544100F1FEC2 /* FilePathValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6614A5F72E4C544000F1FEC2 /* FilePathValidator.swift */; };
 		664EC5342E4DA30D00E544F0 /* NotificationEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 664EC5332E4DA30D00E544F0 /* NotificationEffects.swift */; };
 		664EC5382E4DDC6300E544F0 /* UnixSocketServerSimple.swift in Sources */ = {isa = PBXBuildFile; fileRef = 664EC5372E4DDC6300E544F0 /* UnixSocketServerSimple.swift */; };
 		664EC53B2E4DE34200E544F0 /* notch-hook in CopyFiles */ = {isa = PBXBuildFile; fileRef = 664EC5392E4DE1CF00E544F0 /* notch-hook */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
@@ -69,7 +70,6 @@
 		69F9A6522E8FF2CF009FAEC5 /* NotificationStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A6512E8FF2CF009FAEC5 /* NotificationStats.swift */; };
 		69F9A6542E900365009FAEC5 /* GlobalShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F9A6532E900365009FAEC5 /* GlobalShortcuts.swift */; };
 		70CB00012E93000000000001 /* CloseButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CB00002E93000000000000 /* CloseButton.swift */; };
-		6614A5F82E4C544100F1FEC2 /* FilePathValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6614A5F72E4C544000F1FEC2 /* FilePathValidator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -116,6 +116,7 @@
 		50NM00032C6F000000000003 /* NotificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationView.swift; sourceTree = "<group>"; };
 		60AD62862C579F4400299297 /* NotchSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchSettingsView.swift; sourceTree = "<group>"; };
 		6614A5F52E4C543900F1FEC1 /* PerformanceConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceConfig.swift; sourceTree = "<group>"; };
+		6614A5F72E4C544000F1FEC2 /* FilePathValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePathValidator.swift; sourceTree = "<group>"; };
 		664EC5332E4DA30D00E544F0 /* NotificationEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationEffects.swift; sourceTree = "<group>"; };
 		664EC5372E4DDC6300E544F0 /* UnixSocketServerSimple.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnixSocketServerSimple.swift; sourceTree = "<group>"; };
 		664EC5392E4DE1CF00E544F0 /* notch-hook */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = "notch-hook"; sourceTree = "<group>"; };
@@ -148,7 +149,6 @@
 		69F9A6512E8FF2CF009FAEC5 /* NotificationStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationStats.swift; sourceTree = "<group>"; };
 		69F9A6532E900365009FAEC5 /* GlobalShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalShortcuts.swift; sourceTree = "<group>"; };
 		70CB00002E93000000000000 /* CloseButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloseButton.swift; sourceTree = "<group>"; };
-		6614A5F72E4C544000F1FEC2 /* FilePathValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePathValidator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -185,7 +185,6 @@
 		504381822C3A86EA000ED325 /* NotchNoti */ = {
 			isa = PBXGroup;
 			children = (
-				6923C71F2E9240D900ACD8B8 /* Utilities */,
 				6923C7112E92390700ACD8B8 /* Persistence */,
 				69B2FF902E91330A00C6068C /* Resources */,
 				69B2FF8C2E9132A800C6068C /* Utilities & Extensions */,
@@ -369,6 +368,7 @@
 			children = (
 				69B2FF8F2E9132EC00C6068C /* Helpers */,
 				69B2FF8E2E9132CC00C6068C /* Extensions */,
+				6923C71F2E9240D900ACD8B8 /* Utilities */,
 			);
 			path = "Utilities & Extensions";
 			sourceTree = "<group>";
