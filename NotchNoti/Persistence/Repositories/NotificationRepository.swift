@@ -210,15 +210,15 @@ actor NotificationRepository: NotificationRepositoryProtocol {
     }
 
     func delete(olderThan date: Date) async throws {
-        let request = NotificationEntity.fetchRequest()
+        let request: NSFetchRequest<NSFetchRequestResult> = NotificationEntity.fetchRequest()
         request.predicate = NSPredicate(format: "timestamp < %@", date as NSDate)
 
-        try await stack.batchDelete(fetchRequest: request as! NSFetchRequest<NSFetchRequestResult>)
+        try await stack.batchDelete(fetchRequest: request)
     }
 
     func clear() async throws {
-        let request = NotificationEntity.fetchRequest()
-        try await stack.batchDelete(fetchRequest: request as! NSFetchRequest<NSFetchRequestResult>)
+        let request: NSFetchRequest<NSFetchRequestResult> = NotificationEntity.fetchRequest()
+        try await stack.batchDelete(fetchRequest: request)
     }
 
     // MARK: - Update

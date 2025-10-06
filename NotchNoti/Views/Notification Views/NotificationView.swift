@@ -33,6 +33,7 @@ struct NotificationView: View, Equatable {
     @State private var urgentScale: CGFloat = 1.0
     @State private var mergedCount = 0
     @State private var pendingCount = 0
+    @State private var actionClicked = false  // 跟踪按钮是否已被点击
     @Environment(\.colorScheme) var colorScheme
 
     // 实现 Equatable 以优化重渲染
@@ -194,8 +195,14 @@ struct NotificationView: View, Equatable {
                     HStack(spacing: 8) {
                         ForEach(actions) { action in
                             NotificationActionButton(action: action) {
+                                // 点击后立即禁用所有按钮，防止重复点击
+                                guard !actionClicked else { return }
+                                actionClicked = true
+
                                 handleAction(action)
                             }
+                            .disabled(actionClicked)  // 点击后禁用按钮
+                            .opacity(actionClicked ? 0.5 : 1.0)  // 视觉反馈
                         }
                     }
                     .padding(.top, 6)
@@ -357,18 +364,17 @@ struct NotificationView: View, Equatable {
     }
 
     private func handleAction(_ action: NotificationAction) {
-        // 检查是否是 MCP 交互式通知
-        if action.action.hasPrefix("mcp_action:") {
-            let components = action.action.components(separatedBy: ":")
-            guard components.count == 3 else { return }
+        // 检查是否是 MCP 交互式通知（通过 metadata 中的 request_id 判断）
+        if let requestId = notification.metadata?["request_id"] {
+            // 这是MCP交互式通知
+            let choice = action.action  // 使用action的值作为choice
 
-            let requestId = components[1]
-            let choice = components[2]
+            print("[NotificationView] MCP Action: requestId=\(requestId), choice=\(choice)")
 
             // 记录用户选择到通知的 metadata
             updateNotificationWithChoice(choice: action.label)
 
-            // 通过 Unix Socket 发送用户选择结果到 MCP 服务器
+            // 通过 PendingActionStore 发送用户选择结果到 MCP 服务器
             sendMCPActionResult(requestId: requestId, choice: choice)
 
             // 隐藏当前通知（用户主动选择，不显示下一个）
@@ -377,9 +383,34 @@ struct NotificationView: View, Equatable {
                     await NotificationManager.shared.hideCurrentNotification(showNext: false)
                 }
             }
+        } else if action.action.hasPrefix("mcp_action:") {
+            // 兼容旧格式：mcp_action:request_id:choice
+            let components = action.action.components(separatedBy: ":")
+            guard components.count == 3 else { return }
+
+            let requestId = components[1]
+            let choice = components[2]
+
+            print("[NotificationView] MCP Action (legacy): requestId=\(requestId), choice=\(choice)")
+
+            updateNotificationWithChoice(choice: action.label)
+            sendMCPActionResult(requestId: requestId, choice: choice)
+
+            withAnimation(AnimationConstants.notificationHide) {
+                Task {
+                    await NotificationManager.shared.hideCurrentNotification(showNext: false)
+                }
+            }
         } else {
-            // 处理其他类型的 action
-            print("[NotificationView] Action triggered: \(action.action)")
+            // 处理其他类型的 action（非MCP交互式通知）
+            print("[NotificationView] Non-MCP Action triggered: \(action.action)")
+
+            // 普通action也应该关闭通知
+            withAnimation(AnimationConstants.notificationHide) {
+                Task {
+                    await NotificationManager.shared.hideCurrentNotification(showNext: true)
+                }
+            }
         }
     }
 

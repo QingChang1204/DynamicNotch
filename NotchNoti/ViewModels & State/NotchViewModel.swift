@@ -5,7 +5,9 @@ import LaunchAtLogin
 import SwiftUI
 
 class NotchViewModel: NSObject, ObservableObject {
-    static weak var shared: NotchViewModel?
+    // 使用 strong 引用替代 weak，避免意外释放
+    // 生命周期由 NotchWindowController 管理
+    static private(set) var shared: NotchViewModel?
 
     var cancellables: Set<AnyCancellable> = []
     let inset: CGFloat
@@ -19,6 +21,10 @@ class NotchViewModel: NSObject, ObservableObject {
 
     deinit {
         destroy()
+        // 清理全局引用
+        if NotchViewModel.shared === self {
+            NotchViewModel.shared = nil
+        }
     }
 
     // 优化的动画配置，支持 ProMotion 120Hz

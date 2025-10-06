@@ -73,6 +73,14 @@ class UnixSocketServerSimple: ObservableObject {
             return
         }
 
+        // 设置socket文件权限为0600（仅所有者可读写）
+        let permissions: mode_t = 0o600
+        if chmod(socketPath, permissions) != 0 {
+            print("[UnixSocket] WARNING: Failed to set socket permissions to 0600: \(String(cString: strerror(errno)))")
+        } else {
+            print("[UnixSocket] ✓ Socket permissions set to 0600 (owner-only)")
+        }
+
         // 开始监听
         guard listen(serverSocket, 5) == 0 else {
             print("[UnixSocket] ERROR: Failed to listen - \(String(cString: strerror(errno)))")
@@ -312,7 +320,7 @@ class UnixSocketServerSimple: ObservableObject {
     // MARK: - Security: Permission Validation
 
     /// 验证客户端权限 (UID检查)
-    /// 允许同一用户或root用户的进程连接
+    /// 严格模式：仅允许同一用户或root用户的进程连接
     private func validateClientPermissions(_ clientSocket: Int32) -> Bool {
         var cred = xucred()
         var credLen = socklen_t(MemoryLayout<xucred>.size)
@@ -326,24 +334,77 @@ class UnixSocketServerSimple: ObservableObject {
             &credLen
         )
 
+        let serverUID = getuid()
+
         guard result == 0 else {
-            // 在沙盒环境下，getsockopt 可能失败（特别是同一应用的不同进程）
-            // 由于 socket 文件在沙盒容器内，只有同一应用能访问，所以允许连接
-            print("[UnixSocket] SECURITY: Failed to get peer credentials (errno: \(errno)), but allowing connection (sandbox environment)")
-            return true
+            // Unix域socket在某些情况下getsockopt会失败，这是正常的
+            // errno 57 (ENOTCONN) 特别常见，表示socket未完全建立连接状态
+            let errorCode = errno
+
+            print("[UnixSocket] SECURITY: Failed to get peer credentials (errno: \(errorCode))")
+
+            // 对于特定的非致命错误码，检查socket文件权限作为替代验证
+            let tolerableErrors: [Int32] = [
+                57,  // ENOTCONN - Socket is not connected (常见于本地Unix socket)
+                22,  // EINVAL - Invalid argument (某些macOS版本的已知问题)
+            ]
+
+            if tolerableErrors.contains(errorCode) {
+                print("[UnixSocket] SECURITY: Tolerable error, checking socket file permissions...")
+
+                // 额外验证：检查socket文件权限
+                // 如果socket文件只有当前用户可访问，可以容忍凭证获取失败
+                if isSocketFileSecure() {
+                    print("[UnixSocket] SECURITY: ✓ Socket file permissions verified (0600), allowing connection")
+                    return true
+                }
+            }
+
+            print("[UnixSocket] SECURITY: ⛔️ DENIED - Connection rejected (error: \(errorCode))")
+            return false
         }
 
         let clientUID = cred.cr_uid
-        let serverUID = getuid()
 
         // 允许同一用户或root用户（UID=0）连接
         // root允许连接是因为Claude Code的Hook可能以sudo运行
         if clientUID != serverUID && clientUID != 0 {
-            print("[UnixSocket] SECURITY: UID mismatch - client:\(clientUID) server:\(serverUID)")
+            print("[UnixSocket] SECURITY: ⛔️ DENIED - UID mismatch (client:\(clientUID) server:\(serverUID))")
             return false
         }
 
         // print("[UnixSocket] SECURITY: ✓ Validated client UID: \(clientUID)")
         return true
+    }
+
+    /// 验证socket文件权限是否安全（仅当前用户可访问）
+    private func isSocketFileSecure() -> Bool {
+        guard FileManager.default.fileExists(atPath: socketPath) else {
+            print("[UnixSocket] SECURITY: Socket file does not exist")
+            return false
+        }
+
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: socketPath)
+            guard let posixPermissions = attributes[.posixPermissions] as? NSNumber else {
+                print("[UnixSocket] SECURITY: Failed to read socket permissions")
+                return false
+            }
+
+            // 验证权限：应该是 0600 或 0700（仅所有者可读写/执行）
+            let permissions = posixPermissions.uint16Value
+            let ownerOnly = (permissions & 0o077) == 0  // 检查组和其他用户没有任何权限
+
+            if !ownerOnly {
+                print("[UnixSocket] SECURITY: ⚠️  Insecure permissions: \(String(format: "0%o", permissions)) (expected: 0600 or 0700)")
+                return false
+            }
+
+            print("[UnixSocket] SECURITY: ✓ Socket permissions OK: \(String(format: "0%o", permissions))")
+            return true
+        } catch {
+            print("[UnixSocket] SECURITY: ⚠️  Failed to check permissions: \(error.localizedDescription)")
+            return false
+        }
     }
 }

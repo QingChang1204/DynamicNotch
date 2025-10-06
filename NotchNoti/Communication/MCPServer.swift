@@ -301,16 +301,41 @@ class NotchMCPServer {
             throw MCPError.missingArguments
         }
 
-        let title = args["title"]?.stringValue ?? "Action Required"
-        let message = args["message"]?.stringValue ?? ""
-        let typeStr = args["type"]?.stringValue ?? "info"
+        // 验证title（必填，长度限制1-100字符）
+        guard let title = args["title"]?.stringValue, !title.isEmpty else {
+            throw MCPError.invalidArguments(reason: "title is required")
+        }
+        guard title.count <= 100 else {
+            throw MCPError.invalidArguments(reason: "title too long (max 100 characters)")
+        }
 
-        // Extract action labels
+        // 验证message（可选，长度限制0-500字符）
+        let message = args["message"]?.stringValue ?? ""
+        guard message.count <= 500 else {
+            throw MCPError.invalidArguments(reason: "message too long (max 500 characters)")
+        }
+
+        // 验证type（可选，必须是有效值）
+        let typeStr = args["type"]?.stringValue ?? "info"
+        let validTypes = ["success", "error", "warning", "info"]
+        guard validTypes.contains(typeStr) else {
+            throw MCPError.invalidArguments(reason: "invalid type '\(typeStr)', must be one of: \(validTypes.joined(separator: ", "))")
+        }
+
+        // 验证actions（必填，1-3个选项，每个选项1-30字符）
         let actionValues = args["actions"]?.arrayValue ?? []
         let actions = actionValues.compactMap { $0.stringValue }
 
         guard !actions.isEmpty else {
-            throw MCPError.invalidArguments
+            throw MCPError.invalidArguments(reason: "actions array is required")
+        }
+        guard actions.count <= 3 else {
+            throw MCPError.invalidArguments(reason: "too many actions (max 3)")
+        }
+        for (index, action) in actions.enumerated() {
+            guard !action.isEmpty && action.count <= 30 else {
+                throw MCPError.invalidArguments(reason: "action[\(index)] must be 1-30 characters")
+            }
         }
 
         // Generate unique request ID
@@ -718,7 +743,22 @@ enum MCPError: Error {
     case unknownTool(String)
     case unknownResource(String)
     case missingArguments
-    case invalidArguments
+    case invalidArguments(reason: String)
+
+    var localizedDescription: String {
+        switch self {
+        case .serverInitFailed:
+            return "MCP server failed to initialize"
+        case .unknownTool(let name):
+            return "Unknown tool: \(name)"
+        case .unknownResource(let uri):
+            return "Unknown resource: \(uri)"
+        case .missingArguments:
+            return "Required arguments are missing"
+        case .invalidArguments(let reason):
+            return "Invalid arguments: \(reason)"
+        }
+    }
 }
 
 // MARK: - Value Extensions

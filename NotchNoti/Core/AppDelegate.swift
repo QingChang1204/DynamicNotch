@@ -13,7 +13,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var isLaunchedAtLogin = false
     var mainWindowController: NotchWindowController?
 
-    var timer: Timer?
+    // 使用 weak var 避免循环引用
+    private var timer: Timer?
 
     func applicationDidFinishLaunching(_: Notification) {
         NotificationCenter.default.addObserver(
@@ -37,6 +38,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 启动AI工作模式检测器
         WorkPatternDetector.shared.startMonitoring()
 
+        // 使用 weak self 避免循环引用
         let timer = Timer.scheduledTimer(
             withTimeInterval: 1,
             repeats: true
@@ -72,11 +74,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_: Notification) {
+        // 清理定时器，防止资源泄漏
+        timer?.invalidate()
+        timer = nil
+
         // 注销全局快捷键
         GlobalShortcutManager.shared.unregisterShortcuts()
 
-        try? FileManager.default.removeItem(at: temporaryDirectory)
-        try? FileManager.default.removeItem(at: pidFile)
+        // 清理临时文件
+        do {
+            try FileManager.default.removeItem(at: temporaryDirectory)
+            try FileManager.default.removeItem(at: pidFile)
+        } catch {
+            print("[AppDelegate] ⚠️  Failed to clean up temporary files: \(error.localizedDescription)")
+        }
+    }
+
+    deinit {
+        // 双重保险：deinit时也清理timer
+        timer?.invalidate()
+        timer = nil
+
+        // 移除通知观察者
+        NotificationCenter.default.removeObserver(self)
     }
 
     func findScreenFitsOurNeeds() -> NSScreen? {

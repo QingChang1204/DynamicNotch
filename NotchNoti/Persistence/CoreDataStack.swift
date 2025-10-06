@@ -18,6 +18,7 @@ actor CoreDataStack {
 
     private let modelName = "NotchNoti"
     private var _container: NSPersistentContainer?
+    private var _isInMemoryFallback: Bool = false
 
     /// 主上下文 (主线程读取)
     nonisolated var viewContext: NSManagedObjectContext {
@@ -25,6 +26,11 @@ actor CoreDataStack {
             let container = await self.container
             return container.viewContext
         }
+    }
+
+    /// 当前是否使用内存模式（降级状态）
+    var isInMemoryFallback: Bool {
+        _isInMemoryFallback
     }
 
     /// 容器 (延迟初始化)
@@ -44,7 +50,7 @@ actor CoreDataStack {
 
     private init() {}
 
-    /// 加载持久化容器
+    /// 加载持久化容器（带降级策略）
     private func loadContainer() async -> NSPersistentContainer {
         let container = NSPersistentContainer(name: modelName)
 
@@ -59,18 +65,76 @@ actor CoreDataStack {
         }
 
         return await withCheckedContinuation { continuation in
-            container.loadPersistentStores { description, error in
+            container.loadPersistentStores { [weak self] description, error in
                 if let error = error {
-                    fatalError("CoreData store failed to load: \(error.localizedDescription)")
+                    // ❌ 生产环境不能 fatalError，需要降级处理
+                    print("[CoreData] ❌ CRITICAL: Failed to load persistent store: \(error.localizedDescription)")
+
+                    // 尝试删除损坏的数据库并重建
+                    if let storeURL = description.url {
+                        print("[CoreData] 🔄 Attempting to delete corrupted database...")
+                        try? FileManager.default.removeItem(at: storeURL)
+                        try? FileManager.default.removeItem(at: storeURL.appendingPathExtension("shm"))
+                        try? FileManager.default.removeItem(at: storeURL.appendingPathExtension("wal"))
+
+                        // 重新加载一次
+                        container.loadPersistentStores { desc2, error2 in
+                            if let error2 = error2 {
+                                print("[CoreData] ❌ Rebuild failed: \(error2.localizedDescription)")
+                                // 最终降级到内存模式
+                                Task { await self?.fallbackToInMemoryStore(container, continuation) }
+                            } else {
+                                print("[CoreData] ✅ Database rebuilt successfully")
+                                self?.configureContext(container)
+                                print("[CoreData] Loaded store (rebuild): \(desc2.url?.lastPathComponent ?? "unknown")")
+                                continuation.resume(returning: container)
+                            }
+                        }
+                    } else {
+                        // 无法定位存储文件，直接降级
+                        Task { await self?.fallbackToInMemoryStore(container, continuation) }
+                    }
+                } else {
+                    // 正常加载成功
+                    self?.configureContext(container)
+                    print("[CoreData] ✅ Loaded store: \(description.url?.lastPathComponent ?? "unknown")")
+                    continuation.resume(returning: container)
                 }
-
-                // 配置视图上下文
-                container.viewContext.automaticallyMergesChangesFromParent = true
-                container.viewContext.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump
-
-                print("[CoreData] Loaded store: \(description.url?.lastPathComponent ?? "unknown")")
-                continuation.resume(returning: container)
             }
+        }
+    }
+
+    /// 配置上下文
+    private func configureContext(_ container: NSPersistentContainer) {
+        container.viewContext.automaticallyMergesChangesFromParent = true
+        container.viewContext.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump
+    }
+
+    /// 降级到内存模式（最后的防御措施）
+    private func fallbackToInMemoryStore(
+        _ container: NSPersistentContainer,
+        _ continuation: CheckedContinuation<NSPersistentContainer, Never>
+    ) {
+        print("[CoreData] ⚠️  FALLBACK: Switching to in-memory store (data will not persist)")
+
+        _isInMemoryFallback = true
+
+        // 创建内存存储
+        let inMemoryDescription = NSPersistentStoreDescription()
+        inMemoryDescription.type = NSInMemoryStoreType
+        container.persistentStoreDescriptions = [inMemoryDescription]
+
+        container.loadPersistentStores { description, error in
+            if let error = error {
+                // 内存模式都失败，这基本不可能，记录致命错误
+                print("[CoreData] ❌❌❌ FATAL: Even in-memory store failed: \(error.localizedDescription)")
+                // 返回空容器，应用会在只读模式运行
+            } else {
+                print("[CoreData] ✅ In-memory fallback store loaded")
+            }
+
+            self.configureContext(container)
+            continuation.resume(returning: container)
         }
     }
 
