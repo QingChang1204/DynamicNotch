@@ -95,10 +95,9 @@ struct NotchMenuView: View {
                 Task {
                     // 清空通知统计（新系统）
                     await NotificationStatsManager.shared.resetStats()
+                    // 清空工作会话统计（Core Data）
+                    StatisticsManager.shared.clearHistory()
                 }
-                // 也清空旧的工作会话统计（保持兼容）
-                StatisticsManager.shared.sessionHistory.removeAll()
-                StatisticsManager.shared.currentSession = nil
                 vm.notchClose()
             }) {
                 Label("清空统计", systemImage: "chart.bar.xaxis")

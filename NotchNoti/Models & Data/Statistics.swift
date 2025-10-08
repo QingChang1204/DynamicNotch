@@ -143,54 +143,113 @@ class StatisticsManager: ObservableObject {
     static let shared = StatisticsManager()
 
     @Published var currentSession: WorkSession?
-    @Published var sessionHistory: [WorkSession] = []
 
-    private let maxHistoryCount = 20
-    private let persistenceKey = "com.notchnoti.workSessions"
+    // Core Data Repository
+    private let repository = StatisticsRepository()
 
-    // 缓存机制 (5分钟有效期)
+    // 缓存最近会话 (用于 UI 显示)
+    private var cachedSessions: [WorkSession] = []
+    private let maxCachedSessions = 20
+
+    // 缓存机制 (全局统计)
     private var cachedGlobalStats: [String: (data: GlobalStatistics, timestamp: Date)] = [:]
     private let cacheValidDuration: TimeInterval = 30  // 0.5分钟
 
     private init() {
-        loadHistory()
+        // 异步加载最近会话
+        Task {
+            await loadRecentSessions()
+        }
+    }
+
+    /// 加载最近会话到缓存
+    private func loadRecentSessions() async {
+        do {
+            cachedSessions = try await repository.fetchRecentSessions(limit: maxCachedSessions)
+            print("[Stats] ✅ Loaded \(cachedSessions.count) sessions from Core Data")
+        } catch {
+            print("[Stats] ❌ Failed to load sessions: \(error)")
+            cachedSessions = []
+        }
     }
 
     // 开始新会话
     func startSession(projectName: String) {
         endSession()  // 结束当前会话
-        currentSession = WorkSession(projectName: projectName)
-        print("[Stats] 新会话开始: \(projectName)")
+
+        Task {
+            do {
+                let newSession = try await repository.createSession(projectName: projectName)
+                await MainActor.run {
+                    self.currentSession = newSession
+                    print("[Stats] 新会话开始: \(projectName), ID: \(newSession.id)")
+                }
+            } catch {
+                print("[Stats] ❌ Failed to create session: \(error)")
+            }
+        }
     }
 
     // 结束会话
     func endSession() {
-        guard var session = currentSession else { return }
-        session.endTime = Date()
-        addToHistory(session)
-        currentSession = nil
-        print("[Stats] 会话结束: \(session.projectName), 时长: \(Int(session.duration/60))分钟")
+        guard let session = currentSession else { return }
 
-        // 为有意义的session生成AI洞察（异步，不阻塞）
-        // 条件：超过10分钟且至少5个活动
-        if session.duration > StatisticsConstants.InsightThreshold.minSessionDuration &&
-           session.totalActivities >= StatisticsConstants.InsightThreshold.minActivities {
-            Task {
-                _ = await WorkInsightsAnalyzer.shared.analyzeCurrentSession(session)
+        Task {
+            do {
+                try await repository.endSession(session.id)
+                print("[Stats] 会话结束: \(session.projectName), 时长: \(Int(session.duration/60))分钟")
+
+                // 刷新缓存
+                await loadRecentSessions()
+
+                // 清空当前会话
+                await MainActor.run {
+                    self.currentSession = nil
+                }
+
+                // 清除全局统计缓存
+                await MainActor.run {
+                    self.invalidateCache()
+                }
+
+                // 为有意义的session生成AI洞察（异步，不阻塞）
+                if session.duration > StatisticsConstants.InsightThreshold.minSessionDuration &&
+                   session.totalActivities >= StatisticsConstants.InsightThreshold.minActivities {
+                    _ = await WorkInsightsAnalyzer.shared.analyzeCurrentSession(session)
+                }
+            } catch {
+                print("[Stats] ❌ Failed to end session: \(error)")
             }
         }
     }
 
     // 记录活动
     func recordActivity(toolName: String, duration: TimeInterval = 0) {
-        guard var session = currentSession else { return }
-        let type = ActivityType.from(toolName: toolName)
-        let activity = Activity(type: type, tool: toolName, duration: duration)
-        session.activities.append(activity)
-        currentSession = session
+        guard let session = currentSession else { return }
 
-        // 清除缓存 (新活动意味着统计数据已过时)
-        invalidateCache()
+        Task {
+            do {
+                let type = ActivityType.from(toolName: toolName)
+                let activity = Activity(type: type, tool: toolName, duration: duration)
+
+                try await repository.addActivity(activity, to: session.id)
+
+                // 更新当前会话的本地副本
+                await MainActor.run {
+                    if var updatedSession = self.currentSession {
+                        updatedSession.activities.append(activity)
+                        self.currentSession = updatedSession
+                    }
+                }
+
+                // 清除缓存 (新活动意味着统计数据已过时)
+                await MainActor.run {
+                    self.invalidateCache()
+                }
+            } catch {
+                print("[Stats] ❌ Failed to record activity: \(error)")
+            }
+        }
     }
 
     /// 清除统计缓存
@@ -198,120 +257,65 @@ class StatisticsManager: ObservableObject {
         cachedGlobalStats.removeAll()
     }
 
-    // 保存历史
-    private func addToHistory(_ session: WorkSession) {
-        sessionHistory.insert(session, at: 0)
-        if sessionHistory.count > maxHistoryCount {
-            sessionHistory.removeLast()
+    /// 清空所有统计数据
+    func clearHistory() {
+        Task {
+            do {
+                // 清空 Core Data 中的所有会话
+                try await repository.deleteOldSessions(olderThan: 0) // 删除所有
+                // 清空缓存
+                cachedSessions.removeAll()
+                // 清空当前会话
+                await MainActor.run {
+                    currentSession = nil
+                    invalidateCache()
+                }
+                print("[Stats] ✅ Cleared all statistics")
+            } catch {
+                print("[Stats] ❌ Failed to clear history: \(error)")
+            }
         }
-        saveHistory()
-    }
-
-    private func saveHistory() {
-        if let encoded = try? JSONEncoder().encode(sessionHistory) {
-            UserDefaults.standard.set(encoded, forKey: persistenceKey)
-        }
-    }
-
-    private func loadHistory() {
-        guard let data = UserDefaults.standard.data(forKey: persistenceKey),
-              let decoded = try? JSONDecoder().decode([WorkSession].self, from: data) else {
-            return
-        }
-        sessionHistory = decoded
     }
 
     // MARK: - 统计分析
 
     /// 今日工作总结
-    func getTodaySummary() -> DailySummary {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let todaySessions = sessionHistory.filter {
-            calendar.isDate($0.startTime, inSameDayAs: today)
+    func getTodaySummary() async -> DailySummary {
+        do {
+            return try await repository.aggregateToday()
+        } catch {
+            print("[Stats] ❌ Failed to get today summary: \(error)")
+            // 返回空数据
+            return DailySummary(
+                date: Calendar.current.startOfDay(for: Date()),
+                sessionCount: 0,
+                totalDuration: 0,
+                totalActivities: 0,
+                averagePace: 0,
+                activityDistribution: [:],
+                sessions: []
+            )
         }
-
-        let totalDuration = todaySessions.reduce(0.0) { $0 + $1.duration }
-        let totalActivities = todaySessions.reduce(0) { $0 + $1.totalActivities }
-        let avgPace = todaySessions.isEmpty ? 0 : todaySessions.reduce(0.0) { $0 + $1.pace } / Double(todaySessions.count)
-
-        // 合并所有活动类型
-        var allActivities: [ActivityType: Int] = [:]
-        for session in todaySessions {
-            for (type, count) in session.activityDistribution {
-                allActivities[type, default: 0] += count
-            }
-        }
-
-        return DailySummary(
-            date: today,
-            sessionCount: todaySessions.count,
-            totalDuration: totalDuration,
-            totalActivities: totalActivities,
-            averagePace: avgPace,
-            activityDistribution: allActivities,
-            sessions: todaySessions
-        )
     }
 
     /// 最近7天趋势
-    func getWeeklyTrend() -> [DailySummary] {
-        let calendar = Calendar.current
-        var summaries: [DailySummary] = []
-
-        for dayOffset in 0..<7 {
-            guard let date = calendar.date(byAdding: .day, value: -dayOffset, to: Date()) else { continue }
-            let startOfDay = calendar.startOfDay(for: date)
-
-            let daySessions = sessionHistory.filter {
-                calendar.isDate($0.startTime, inSameDayAs: startOfDay)
-            }
-
-            let totalDuration = daySessions.reduce(0.0) { $0 + $1.duration }
-            let totalActivities = daySessions.reduce(0) { $0 + $1.totalActivities }
-            let avgPace = daySessions.isEmpty ? 0 : daySessions.reduce(0.0) { $0 + $1.pace } / Double(daySessions.count)
-
-            var allActivities: [ActivityType: Int] = [:]
-            for session in daySessions {
-                for (type, count) in session.activityDistribution {
-                    allActivities[type, default: 0] += count
-                }
-            }
-
-            summaries.append(DailySummary(
-                date: startOfDay,
-                sessionCount: daySessions.count,
-                totalDuration: totalDuration,
-                totalActivities: totalActivities,
-                averagePace: avgPace,
-                activityDistribution: allActivities,
-                sessions: daySessions
-            ))
+    func getWeeklyTrend() async -> [DailySummary] {
+        do {
+            return try await repository.aggregateWeeklyTrend()
+        } catch {
+            print("[Stats] ❌ Failed to get weekly trend: \(error)")
+            return []
         }
-
-        return summaries.reversed()
     }
 
     /// 获取项目统计
-    func getProjectStats() -> [ProjectSummary] {
-        var projectMap: [String: [WorkSession]] = [:]
-
-        for session in sessionHistory {
-            projectMap[session.projectName, default: []].append(session)
+    func getProjectStats() async -> [ProjectSummary] {
+        do {
+            return try await repository.aggregateByProject()
+        } catch {
+            print("[Stats] ❌ Failed to get project stats: \(error)")
+            return []
         }
-
-        return projectMap.map { (name, sessions) in
-            let totalDuration = sessions.reduce(0.0) { $0 + $1.duration }
-            let totalActivities = sessions.reduce(0) { $0 + $1.totalActivities }
-
-            return ProjectSummary(
-                projectName: name,
-                sessionCount: sessions.count,
-                totalDuration: totalDuration,
-                totalActivities: totalActivities,
-                lastActive: sessions.map(\.startTime).max() ?? Date()
-            )
-        }.sorted { $0.lastActive > $1.lastActive }
     }
 }
 
@@ -529,79 +533,83 @@ struct CurrentSessionView: View {
 
 struct TodayOverviewView: View {
     @ObservedObject var statsManager = StatisticsManager.shared
+    @State private var summary: DailySummary?
 
     var body: some View {
-        let summary = statsManager.getTodaySummary()
-
-        if summary.sessionCount > 0 {
-            HStack(spacing: 12) {
-                // 左侧：时间和会话数
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
-                        Text("⏰")
-                            .font(.caption2)
-                        Text(String(format: "%.1fh", summary.durationHours))
-                            .font(.system(.body, design: .rounded))
-                            .fontWeight(.semibold)
-                            .foregroundColor(.green)
-                    }
-
-                    HStack(spacing: 6) {
-                        Text("📝")
-                            .font(.caption2)
-                        Text("\(summary.sessionCount) 会话")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.9))
-                    }
-
-                    HStack(spacing: 6) {
-                        Text("⚡️")
-                            .font(.caption2)
-                        Text("\(summary.totalActivities) 操作")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.9))
-                    }
-                }
-                .frame(width: 120, alignment: .leading)
-
-                Divider()
-                    .frame(height: 80)
-                    .opacity(0.3)
-
-                // 右侧：活动分布
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("活动分布")
-                        .font(.caption2)
-                        .foregroundColor(.white.opacity(0.5))
-
-                    ForEach(summary.activityDistribution.sorted(by: { $0.value > $1.value }).prefix(3), id: \.key) { type, count in
-                        HStack(spacing: 4) {
-                            Text(type.rawValue)
+        Group {
+            if let summary = summary, summary.sessionCount > 0 {
+                HStack(spacing: 12) {
+                    // 左侧：时间和会话数
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) {
+                            Text("⏰")
                                 .font(.caption2)
-                                .foregroundColor(.white.opacity(0.8))
+                            Text(String(format: "%.1fh", summary.durationHours))
+                                .font(.system(.body, design: .rounded))
+                                .fontWeight(.semibold)
+                                .foregroundColor(.green)
+                        }
 
-                            Spacer()
-
-                            Text("\(count)")
+                        HStack(spacing: 6) {
+                            Text("📝")
                                 .font(.caption2)
-                                .foregroundColor(.cyan)
+                            Text("\(summary.sessionCount) 会话")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.9))
+                        }
+
+                        HStack(spacing: 6) {
+                            Text("⚡️")
+                                .font(.caption2)
+                            Text("\(summary.totalActivities) 操作")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.9))
                         }
                     }
+                    .frame(width: 120, alignment: .leading)
+
+                    Divider()
+                        .frame(height: 80)
+                        .opacity(0.3)
+
+                    // 右侧：活动分布
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("活动分布")
+                            .font(.caption2)
+                            .foregroundColor(.white.opacity(0.5))
+
+                        ForEach(summary.activityDistribution.sorted(by: { $0.value > $1.value }).prefix(3), id: \.key) { type, count in
+                            HStack(spacing: 4) {
+                                Text(type.rawValue)
+                                    .font(.caption2)
+                                    .foregroundColor(.white.opacity(0.8))
+
+                                Spacer()
+
+                                Text("\(count)")
+                                    .font(.caption2)
+                                    .foregroundColor(.cyan)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            } else {
+                VStack(spacing: 8) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 32))
+                        .foregroundColor(.gray.opacity(0.5))
+                    Text("今日暂无数据")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-        } else {
-            VStack(spacing: 8) {
-                Image(systemName: "calendar.badge.clock")
-                    .font(.system(size: 32))
-                    .foregroundColor(.gray.opacity(0.5))
-                Text("今日暂无数据")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .task {
+            summary = await statsManager.getTodaySummary()
         }
     }
 }
@@ -610,42 +618,48 @@ struct TodayOverviewView: View {
 
 struct WeeklyTrendView: View {
     @ObservedObject var statsManager = StatisticsManager.shared
+    @State private var trend: [DailySummary] = []
 
     var body: some View {
-        let trend = statsManager.getWeeklyTrend().suffix(7)
+        let displayTrend = Array(trend.suffix(7))
 
-        if !trend.isEmpty && trend.contains(where: { $0.sessionCount > 0 }) {
-            HStack(spacing: 8) {
-                ForEach(trend, id: \.id) { day in
-                    VStack(spacing: 2) {
-                        Text(day.dateString)
-                            .font(.system(size: 8))
-                            .foregroundColor(.white.opacity(0.5))
+        return Group {
+            if !displayTrend.isEmpty && displayTrend.contains(where: { $0.sessionCount > 0 }) {
+                HStack(spacing: 8) {
+                    ForEach(displayTrend, id: \.id) { day in
+                        VStack(spacing: 2) {
+                            Text(day.dateString)
+                                .font(.system(size: 8))
+                                .foregroundColor(.white.opacity(0.5))
 
-                        // 简化柱状图
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(day.sessionCount > 0 ? Color.cyan : Color.white.opacity(0.1))
-                            .frame(width: 12, height: max(CGFloat(day.durationHours) * 20, 4))
+                            // 简化柱状图
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(day.sessionCount > 0 ? Color.cyan : Color.white.opacity(0.1))
+                                .frame(width: 12, height: max(CGFloat(day.durationHours) * 20, 4))
 
-                        Text(day.sessionCount > 0 ? "\(day.sessionCount)" : "")
-                            .font(.system(size: 8))
-                            .foregroundColor(.cyan)
+                            Text(day.sessionCount > 0 ? "\(day.sessionCount)" : "")
+                                .font(.system(size: 8))
+                                .foregroundColor(.cyan)
+                        }
                     }
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                VStack(spacing: 8) {
+                    Image(systemName: "chart.bar")
+                        .font(.system(size: 32))
+                        .foregroundColor(.gray.opacity(0.5))
+                    Text("本周暂无数据")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            VStack(spacing: 8) {
-                Image(systemName: "chart.bar")
-                    .font(.system(size: 32))
-                    .foregroundColor(.gray.opacity(0.5))
-                Text("本周暂无数据")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .task {
+            trend = await statsManager.getWeeklyTrend()
         }
     }
 }
@@ -654,6 +668,7 @@ struct WeeklyTrendView: View {
 
 struct CompactWorkSessionStatsView: View {
     @ObservedObject var statsManager = StatisticsManager.shared
+    @State private var todaySummary: DailySummary?
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -669,6 +684,9 @@ struct CompactWorkSessionStatsView: View {
             closeButton
         }
         .frame(height: 160)
+        .task {
+            todaySummary = await statsManager.getTodaySummary()
+        }
     }
 
     // MARK: - 活跃会话布局
@@ -825,15 +843,13 @@ struct CompactWorkSessionStatsView: View {
 
     // MARK: - 今日汇总卡片
     private var todayCompactCard: some View {
-        let summary = statsManager.getTodaySummary()
-
-        return VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
             Text("今日")
                 .font(.system(size: 8, weight: .semibold))
                 .foregroundColor(.white.opacity(0.4))
                 .textCase(.uppercase)
 
-            if summary.sessionCount > 0 {
+            if let summary = todaySummary, summary.sessionCount > 0 {
                 VStack(alignment: .leading, spacing: 6) {
                     // 时长卡片
                     HStack(spacing: 6) {
@@ -1217,15 +1233,16 @@ extension StatisticsManager {
         // 6. 项目信息
         let projectName = project ?? filtered.first?.metadata?["project"] ?? "全部项目"
 
-        // 计算总工作时长 (从session历史)
-        let totalDuration = sessionHistory
-            .filter { session in
-                if let proj = project {
-                    return session.projectName == proj
-                }
-                return true
-            }
-            .reduce(0.0) { $0 + $1.duration }
+        // 计算总工作时长 (从缓存或数据库)
+        let totalDuration: TimeInterval
+        if let proj = project {
+            // 按项目筛选
+            let projectSessions = cachedSessions.filter { $0.projectName == proj }
+            totalDuration = projectSessions.reduce(0.0) { $0 + $1.duration }
+        } else {
+            // 全部项目
+            totalDuration = cachedSessions.reduce(0.0) { $0 + $1.duration }
+        }
 
         let stats = GlobalStatistics(
             timeRange: range,
