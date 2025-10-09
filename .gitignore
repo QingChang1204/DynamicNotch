@@ -110,3 +110,20 @@ iOSInjectionProject/
 !.serena/memories/suggested_*.md
 !.serena/memories/task_completion_*.md
 !.serena/memories/code_style_*.md
+
+# Code Signing & Certificates (敏感信息 - 不应提交)
+# 签名证书
+*.p12
+*.cer
+*.certSigningRequest
+# Provisioning Profiles
+*.mobileprovision
+*.provisionprofile
+# Export options with team info
+**/ExportOptions.plist
+# Private keys
+*.key
+*.pem
+# Keychain files
+*.keychain
+*.keychain-db
