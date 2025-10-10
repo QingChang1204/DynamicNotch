@@ -18,22 +18,28 @@ struct NotchHeaderView: View {
             if vm.contentType == .stats || vm.contentType == .aiAnalysis || vm.contentType == .history {
                 EmptyView()
             } else {
-                HStack {
+                HStack(spacing: 12) {
                     // 根据不同的内容类型显示不同的标题
-                    switch vm.contentType {
-                    case .settings:
-                        Text("Version: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown") (Build: \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"))")
-                            .contentTransition(.numericText())
-                    case .summaryHistory:
-                        Text("Session总结 (\(SessionSummaryManager.shared.recentSummaries.count))")
-                            .contentTransition(.numericText())
-                    default:
-                        // 动态显示通知历史或通知中心
-                        Text(historyCount == 0 ? "通知中心" : "通知历史 (\(historyCount))")
-                            .contentTransition(.numericText())
+                    Group {
+                        switch vm.contentType {
+                        case .settings:
+                            Text("Version: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown") (Build: \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"))")
+                                .contentTransition(.numericText())
+                        case .summaryHistory:
+                            Text("Session总结 (\(SessionSummaryManager.shared.recentSummaries.count))")
+                                .contentTransition(.numericText())
+                        default:
+                            // 动态显示通知历史或通知中心
+                            Text(historyCount == 0 ? "通知中心" : "通知历史 (\(historyCount))")
+                                .contentTransition(.numericText())
+                        }
                     }
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(1)
 
-                    Spacer()
+                    Spacer(minLength: 8)
 
                     HStack(spacing: 12) {
                         // 清空按钮 - 根据不同视图显示
