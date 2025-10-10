@@ -15,8 +15,8 @@ struct NotchHeaderView: View {
 
     var body: some View {
         Group {
-            // 统计、AI洞察、历史页面不显示header
-            if vm.contentType == .stats || vm.contentType == .aiAnalysis || vm.contentType == .history {
+            // 统计、AI洞察、历史、设置页面不显示header（这些页面有自己的关闭按钮）
+            if vm.contentType == .stats || vm.contentType == .aiAnalysis || vm.contentType == .history || vm.contentType == .settings {
                 EmptyView()
             } else {
                 HStack(spacing: 12) {

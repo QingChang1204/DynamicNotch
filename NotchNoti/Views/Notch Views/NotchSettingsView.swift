@@ -13,6 +13,16 @@ struct NotchSettingsView: View {
     @State private var historyCount = 0
 
     var body: some View {
+        ZStack(alignment: .topTrailing) {
+            contentView
+
+            // 关闭按钮
+            closeButton
+        }
+        .frame(height: 160)
+    }
+
+    private var contentView: some View {
         VStack(spacing: vm.spacing) {
             HStack {
                 Picker("语言: ", selection: $vm.selectedLanguage) {
@@ -82,6 +92,22 @@ struct NotchSettingsView: View {
             let history = await NotificationManager.shared.getHistory(page: 0, pageSize: 50)
             historyCount = history.count
         }
+    }
+
+    private var closeButton: some View {
+        Button(action: {
+            vm.returnToNormal()
+        }) {
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 16))
+                .foregroundColor(.white.opacity(0.3))
+                .padding(6)
+                .background(Circle().fill(Color.black.opacity(0.01)))
+                .contentShape(Circle())
+        }
+        .buttonStyle(PlainButtonStyle())
+        .padding(8)
+        .zIndex(100)
     }
 }
 
