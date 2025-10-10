@@ -11,6 +11,7 @@ import SwiftUI
 struct NotchHeaderView: View {
     @StateObject var vm: NotchViewModel
     @State private var historyCount = 0
+    @State private var debounceTask: Task<Void, Never>?
 
     var body: some View {
         Group {
@@ -68,14 +69,18 @@ struct NotchHeaderView: View {
                         Image(systemName: "ellipsis")
                     }
                 }
-                .animation(vm.animation, value: vm.contentType)
-                .animation(vm.animation, value: historyCount)
                 .font(.system(.headline, design: .rounded))
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .notificationDidUpdate)) { _ in
-            // 响应式更新历史记录数量
-            Task {
+            // 防抖：取消之前的更新任务
+            debounceTask?.cancel()
+
+            // 延迟300ms更新，避免频繁刷新触发布局抖动
+            debounceTask = Task {
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                guard !Task.isCancelled else { return }
+
                 let updatedHistory = await NotificationManager.shared.getHistory(page: 0, pageSize: 50)
                 historyCount = updatedHistory.count
             }
